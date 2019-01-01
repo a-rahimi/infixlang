@@ -1,10 +1,20 @@
 class ParseError(Exception):
-  def __init__(self, rule=None, stream=None):
+  def __init__(self, message=None, rule=None, stream=None):
+    self.message = message
     self.rule = rule
     self.stream = stream
+    self.original_stream = None
 
   def __str__(self):
-    return ''.join(str(s) for s in self.stream) + '\nFiled rule: ' + str(self.rule)
+    msg = self.message
+    if self.original_stream:
+      msg += 'Error at token %d:\n' % (
+          len(self.original_stream) - len(self.stream))
+
+    msg += ''.join(str(s) for s in self.stream)
+    if self.rule:
+      msg += '\nFailed rule: ' + str(self.rule)
+    return msg
 
 
 class Rule:
@@ -19,6 +29,8 @@ class Rule:
     for rule in cls.rules:
       try:
         if hasattr(rule, '__iter__'):
+          # try each production in order. report the result of the first one
+          # that matches.
           parse = []
           new_stream = stream
           for r in rule:
@@ -26,15 +38,17 @@ class Rule:
             parse.append(v)
           return cls(parse), new_stream
         else:
+          # the rule is an alias for another rule. just report its result.
           return rule.parse(stream)
       except ParseError:
         pass
+
+    # none of the rules matched. fail.
     raise ParseError(rule=cls, stream=stream)
 
 
 class Terminal(Rule):
   def __repr__(self):
-    #return '%s(%s)' % (self.__class__, self.val)
     return str(self.val)
 
   @classmethod
@@ -57,6 +71,19 @@ class Terminal(Rule):
     return stream[0], stream[1:]
 
 
+def parse(production_rule_root, stream):
+  try:
+    p, new_stream = production_rule_root.parse(stream)
+
+    if new_stream:
+      raise ParseError(
+          message="Couldn't parse the entire stream",
+          stream=new_stream)
+  except ParseError as e:
+    e.original_stream = stream
+    raise e
+
+  return p
 
 # support for tokenizing the input
 
@@ -65,19 +92,16 @@ def eat_whitespace(string):
     string = string[1:]
   return string
 
-
 def tokenize(string, tokens):
   stream = []
   while string:
     string = eat_whitespace(string)
     for tok in tokens:
       token, string = tok.tokenize(string)
-      if token is not None:
+      if token:
         stream.append(token)
-        token_found = True
         break
-    if token is None:
+    if not token:
       raise ValueError('Unrecognized:' + string)
 
   return stream
-    

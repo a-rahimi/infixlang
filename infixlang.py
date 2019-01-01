@@ -85,17 +85,18 @@ def tokenize(string):
 
 def tests():
   def check(string, expected_value):
-    parse_tree, remaining_stream = expr.parse(tokenize(string))
+    parse_tree = parser.parse(expr, tokenize(string))
     computed_value = parse_tree.eval()
     if computed_value != expected_value:
       raise ValueError('Got %s expected %s for %s' % (
         computed_value,
         expected_value, 
         string))
-    return remaining_stream
+    print string, '=', expected_value
 
   check('2+3*4', 14)
   check('2 *  3 +4', 10)
   check('(2+3)*4', 20)
+  check('(2+3)*0', 0)
 
   print 'OK'
