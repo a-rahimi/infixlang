@@ -22,6 +22,10 @@ class integer(parser.Terminal):
 
 
 class op1(parser.Terminal):
+  """Infix operators with the lowest priority.
+
+  These are + and -.
+  """
   def __init__(self, val):
     self.val = val
     self.func = {'+': int.__add__, '-': int.__sub__}[val] 
@@ -31,6 +35,10 @@ class op1(parser.Terminal):
     return token in ['-', '+']
 
 class op2(parser.Terminal):
+  """Infix operators with the second lowest priority.
+
+  These are * and /.
+  """
   def __init__(self, val):
     self.val = val
     self.func = {'*': int.__mul__, '/': int.__div__}[val] 
@@ -40,15 +48,20 @@ class op2(parser.Terminal):
     return token in ['*', '/']
 
 class open_paren(parser.Terminal):
+  """A single character literal: (.
+  """
   @classmethod
   def ismatch(cls, token):
     return token == '('
 
 class close_paren(parser.Terminal):
+  """A single character literal: ).
+  """
   @classmethod
   def ismatch(cls, token):
     return token == ')'
 
+# Forward declarations of the production rules.
 class expr(parser.Rule):
   pass
 
@@ -67,6 +80,7 @@ class expr3(parser.Rule):
       return self.val[1].eval()
   
  
+# The actual production rules.
 expr.rules = (expr1,)
 
 expr1.rules = ([expr2, op1, expr1],
@@ -83,7 +97,26 @@ expr3.rules = (integer,
 def tokenize(string):
   return parser.tokenize(string, [integer, op1, op2, open_paren, close_paren])
 
-def tests():
+
+def test_tokenize():
+  def check(string):
+    tokens = tokenize(string)
+    stringified = ''.join(str(tok) for tok in tokens)
+    expected = string.translate(None, ' ')
+    if stringified != expected:
+      raise ValueError('Got %s for %s' % (
+        stringified,
+        expected))
+
+  check('2+3*4')
+  check('2 *  3 +4')
+  check('(2+3)*4')
+  check('(2+3)*0')
+
+  print 'OK'
+
+
+def test_parsing():
   def check(string, expected_value):
     parse_tree = parser.parse(expr, tokenize(string))
     computed_value = parse_tree.eval()
@@ -100,3 +133,7 @@ def tests():
   check('(2+3)*0', 0)
 
   print 'OK'
+
+def tests():
+  test_tokenize()
+  test_parsing()
