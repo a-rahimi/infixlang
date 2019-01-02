@@ -8,10 +8,10 @@ class ParseError(Exception):
   def __str__(self):
     msg = self.message
     if self.original_stream:
-      msg += 'Error at token %d:\n' % (
+      msg += '\nError at token %d:' % (
           len(self.original_stream) - len(self.stream))
 
-    msg += ''.join(str(s) for s in self.stream)
+    msg += '\n' + ''.join(str(s) for s in self.stream)
     if self.rule:
       msg += '\nFailed rule: ' + str(self.rule)
     return msg
@@ -68,19 +68,23 @@ class Terminal(Rule):
 
     if not isinstance(stream[0], cls):
       raise ParseError(rule=cls, stream=stream)
+
     return stream[0], stream[1:]
 
 
 def parse(production_rule_root, stream):
   try:
     p, new_stream = production_rule_root.parse(stream)
-
-    if new_stream:
-      raise ParseError(
-          message="Couldn't parse the entire stream",
-          stream=new_stream)
   except ParseError as e:
     e.original_stream = stream
+    raise e
+
+  if new_stream:
+    e = ParseError(
+        message="Couldn't parse the entire stream",
+        stream=new_stream)
+    e.original_stream = stream
+    e.parse_so_far = p
     raise e
 
   return p
