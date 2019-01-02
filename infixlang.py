@@ -4,48 +4,98 @@ import parser
 reload(parser)
 
 
+class Context(object):
+
+  class Slot(object):
+    def __init__(self, context, name):
+      self.context = context
+      self.name = name
+
+    def set_value(self, value):
+      self.context.slots[self.name] = value
+
+  def __init__(self, parent=None):
+    self.slots = {}
+    self.parent = parent
+
+  def get_slot_rhs(self, name):
+    if not isinstance(name, str):
+      raise ValueError('"%s" is not a string' % name)
+
+    try:
+      return self.slots[name]
+    except KeyError:
+      if self.parent:
+        return self.parent.get_slot_rhs(self, names)
+      raise
+
+  def get_slot_lhs(self, name):
+    return self.Slot(self, name)
+
+  def clear(self):
+    self.slots.clear()
+
+
+global_context = Context()
+
+
+
 # Forward declarations of the production rules.
 class expr(parser.Rule):
-  def eval(self):
+  rules = None # production rules are defined below.
+
+  def eval(self, context):
     raise NotImplementedError
 
-  def eval_lhs(self):
-    return self.eval()
+  def eval_lhs(self, context):
+    return self.eval(context)
 
-  def eval_rhs(self):
-    return self.eval()
+  def eval_rhs(self, context):
+    return self.eval(context)
 
 class expr_assignment_like(expr):
-  def eval(self):
-    return self.val[1].func(self.val[0].eval_lhs(), self.val[2].eval_rhs())
+  rules = None # production rules are defined below.
 
-class expr2(expr):
-  def eval(self):
-    return self.val[1].func(self.val[0].eval_rhs(), self.val[2].eval_rhs())
+  def eval(self, context):
+    # in the context of an assignment, the left operator is evaluated as lhs.
+    return self.val[1].func(
+        self.val[0].eval_lhs(context),
+        self.val[2].eval_rhs(context))
 
-class expr3(expr2):
-  pass
+class expr_plusminus(expr):
+  rules = None # production rules are defined below.
+
+  def eval(self, context):
+    # in non-assignment contexts, both operators are evaluated a rhs
+    return self.val[1].func(
+        self.val[0].eval_rhs(context),
+        self.val[2].eval_rhs(context))
+
+class expr_muldiv(expr_plusminus):
+  rules = None # production rules are defined below.
  
-class expr4(expr3):
-  def eval(self):
+class expr_highest_precedence(expr):
+  rules = None # production rules are defined below.
+
+  def eval(self, context):
     if isinstance(self.val, integer):
       # an integer
-      return self.val.eval()
+      return self.val.eval(context)
     if isinstance(self.val[0], open_paren):
       # a parenthesized expression. return the expression and ignore the
       # parentheses.
-      return self.val[1].eval()
+      return self.val[1].eval(context)
  
 
 class Value(parser.Terminal):
-  def eval(self):
+  def eval(self, context):
     return self.val
 
-  def eval_lhs(self):
-    return self.eval()
+  def eval_lhs(self, context):
+    return self.eval(context)
 
-  def eval_rhs(self):
-    return self.eval()
+  def eval_rhs(self, context):
+    return self.eval(context)
 
 
 class integer(Value):
@@ -63,40 +113,14 @@ class integer(Value):
 
     return cls(num) if ok else None, string
 
-class Context(object):
-  def __init__(self):
-    self.slots = {}
 
-  def get_slot_rhs(self, name):
-    if not isinstance(name, str):
-      raise ValueError('"%s" is not a string' % name)
-
-    return self.slots[name]
-
-  def get_slot_lhs(self, name):
-    return Slot(self, name)
-
-class Slot(object):
-  def __init__(self, context, name):
-    self.context = context
-    self.name = name
-
-  def set_value(self, value):
-    self.context.slots[self.name] = value
-
-
-# for now, there just a global context. eventually, i'll chain these into
-# frames.
-context = Context()
-
-
-class word(Value):
+class variable(Value):
   """A standin for a top level expression.
 
-  A word can be assigned to an expression like this:
-     myword = 1 + 23 * 43
+  A variable can be assigned to an expression like this:
+     myvariable = 1 + 23 * 43
 
-  From there, wherever "myword" appears, a reference to the expression
+  From there, wherever "myvariable" appears, a reference to the expression
   object corresponding to 1 + 23 * 43 is substituted. 
   """
   @classmethod
@@ -108,11 +132,14 @@ class word(Value):
 
     return cls(w), string
 
-  def eval_lhs(self):
+  def eval_lhs(self, context):
     return context.get_slot_lhs(self.val)
 
-  def eval_rhs(self):
+  def eval_rhs(self, context):
     return context.get_slot_rhs(self.val)
+
+  def eval(self, context):
+    return self.eval_rhs(context)
 
 
 class op_assignment(parser.Terminal):
@@ -120,15 +147,12 @@ class op_assignment(parser.Terminal):
 
   This is just =.
   """
-  def __init__(self, val):
-    self.val = val
-
   @classmethod
   def ismatch(cls, token):
     return token == '='
 
-  def func(self, lhs, rhs):
-    lhs.set_value(rhs)
+  def func(self, slot, rhs):
+    slot.set_value(rhs)
     return rhs
 
 
@@ -145,6 +169,7 @@ class op_plusminus(parser.Terminal):
   def ismatch(cls, token):
     return token in ['-', '+']
 
+
 class op_muldiv(parser.Terminal):
   """Infix operators with the second lowest priority.
 
@@ -158,12 +183,14 @@ class op_muldiv(parser.Terminal):
   def ismatch(cls, token):
     return token in ['*', '/']
 
+
 class open_paren(parser.Terminal):
   """A single character literal: (.
   """
   @classmethod
   def ismatch(cls, token):
     return token == '('
+
 
 class close_paren(parser.Terminal):
   """A single character literal: ).
@@ -176,18 +203,24 @@ class close_paren(parser.Terminal):
 # The actual production rules.
 expr.rules = (expr_assignment_like,)
 
-expr_assignment_like.rules = ([word, op_assignment, expr2],
-               expr2)
+expr_assignment_like.rules = (
+    [variable, op_assignment, expr_plusminus],
+    expr_plusminus
+    )
 
-expr2.rules = ([expr3, op_plusminus, expr2],
-               expr3)
+expr_plusminus.rules = (
+    [expr_muldiv, op_plusminus, expr_plusminus],
+    expr_muldiv
+    )
 
-expr3.rules = ([expr4, op_muldiv, expr3],
-               expr4)
+expr_muldiv.rules = (
+    [expr_highest_precedence, op_muldiv, expr_muldiv],
+    expr_highest_precedence)
 
-expr4.rules = (integer,
-               word,
-               [open_paren, expr, close_paren])
+expr_highest_precedence.rules = (
+    integer,
+    variable,
+    [open_paren, expr, close_paren])
 
 
 def tokenize(string):
@@ -198,7 +231,7 @@ def tokenize(string):
     op_muldiv,
     open_paren,
     close_paren,
-    word])
+    variable])
 
 
 def test_tokenize():
@@ -223,13 +256,12 @@ def test_tokenize():
 def test_parse():
   def check(string, expected_value):
     parse_tree = parser.parse(expr, tokenize(string))
-    computed_value = parse_tree.eval()
+    computed_value = parse_tree.eval(global_context)
     if computed_value != expected_value:
       raise ValueError('Got %s expected %s for %s' % (
         computed_value,
         expected_value, 
         string))
-    print string, '=', expected_value
 
   check('2+3*4', 14)
   check('2 *  3 +4', 10)
@@ -238,21 +270,26 @@ def test_parse():
 
   print 'OK parse'
 
-def test_assignment():
-    parser.parse(expr, tokenize('foo = 2 * 23')).eval()
-    assert context.slots['foo'] == 46
-    parser.parse(expr, tokenize('bar = foo + 2')).eval()
-    assert context.slots['bar'] == 48
 
-    tokens = tokenize('a = 2* 23   b = a + 2')
-    p, tokens = expr.parse(tokens)
-    p.eval()
-    p, tokens = expr.parse(tokens)
-    p.eval()
-    assert not tokens
-    assert context.slots['a'] == 46
-    assert context.slots['b'] == 48
-    print 'OK'
+def test_assignment():
+  context = Context()
+  parser.parse(expr, tokenize('foo = 2 * 23')).eval(context)
+  assert context.slots['foo'] == 46
+  parser.parse(expr, tokenize('bar = foo + 2')).eval(context)
+  assert context.slots['bar'] == 48
+
+  context = Context()
+  tokens = tokenize('a = 2* 23   b = a + 2 b')
+  p, tokens = expr.parse(tokens)
+  p.eval(context)
+  p, tokens = expr.parse(tokens)
+  p.eval(context)
+  p, tokens = expr.parse(tokens)
+  assert p.eval(context) == 48
+  assert not tokens
+  assert context.slots['a'] == 46
+  assert context.slots['b'] == 48
+  print 'OK assignment'
 
 
 def tests():
