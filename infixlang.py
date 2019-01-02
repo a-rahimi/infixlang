@@ -1,5 +1,3 @@
-import collections
-
 import parser
 reload(parser)
 
@@ -32,15 +30,15 @@ class Context(object):
   def get_slot_lhs(self, name):
     return self.Slot(self, name)
 
-  def clear(self):
-    self.slots.clear()
+  def __str__(self):
+    s = 'Context[' + ', '.join(str((s,v)) for s,v in self.slots.iteritems()) + ']'
+    return s
 
 
 global_context = Context()
 
 
 
-# Forward declarations of the production rules.
 class expr(parser.Rule):
   rules = None # production rules are defined below.
 
@@ -111,26 +109,18 @@ class integer(Value):
       string = string[1:]
       ok = True
 
-    return cls(num) if ok else None, string
+    return (cls(num) if ok else None), string
 
 
 class variable(Value):
-  """A standin for a top level expression.
-
-  A variable can be assigned to an expression like this:
-     myvariable = 1 + 23 * 43
-
-  From there, wherever "myvariable" appears, a reference to the expression
-  object corresponding to 1 + 23 * 43 is substituted. 
-  """
   @classmethod
   def tokenize(cls, string):
     w = ''
-    while string and not string[0].isspace():
+    while string and string[0].isalnum():
       w += string[0]
       string = string[1:]
 
-    return cls(w), string
+    return (cls(w) if w else None), string
 
   def eval_lhs(self, context):
     return context.get_slot_lhs(self.val)
@@ -143,10 +133,6 @@ class variable(Value):
 
 
 class op_assignment(parser.Terminal):
-  """Infix operators with the lowest priority.
-
-  This is just =.
-  """
   @classmethod
   def ismatch(cls, token):
     return token == '='
@@ -157,10 +143,6 @@ class op_assignment(parser.Terminal):
 
 
 class op_plusminus(parser.Terminal):
-  """Infix operators with the lowest priority.
-
-  These are + and -.
-  """
   def __init__(self, val):
     self.val = val
     self.func = {'+': int.__add__, '-': int.__sub__}[val] 
@@ -171,10 +153,6 @@ class op_plusminus(parser.Terminal):
 
 
 class op_muldiv(parser.Terminal):
-  """Infix operators with the second lowest priority.
-
-  These are * and /.
-  """
   def __init__(self, val):
     self.val = val
     self.func = {'*': int.__mul__, '/': int.__div__}[val] 
@@ -183,29 +161,42 @@ class op_muldiv(parser.Terminal):
   def ismatch(cls, token):
     return token in ['*', '/']
 
+class comma(parser.Terminal):
+  @classmethod
+  def ismatch(cls, token):
+    return token == ','
+
+class open_square_bracket(parser.Terminal):
+  @classmethod
+  def ismatch(cls, token):
+    return token == '['
+
+
+class close_square_bracket(parser.Terminal):
+  @classmethod
+  def ismatch(cls, token):
+    return token == ']'
 
 class open_paren(parser.Terminal):
-  """A single character literal: (.
-  """
   @classmethod
   def ismatch(cls, token):
     return token == '('
 
 
 class close_paren(parser.Terminal):
-  """A single character literal: ).
-  """
   @classmethod
   def ismatch(cls, token):
     return token == ')'
 
 
 # The actual production rules.
-expr.rules = (expr_assignment_like,)
+expr.rules = (
+    expr_assignment_like,
+    expr_plusminus
+    )
 
 expr_assignment_like.rules = (
     [variable, op_assignment, expr_plusminus],
-    expr_plusminus
     )
 
 expr_plusminus.rules = (
@@ -220,7 +211,8 @@ expr_muldiv.rules = (
 expr_highest_precedence.rules = (
     integer,
     variable,
-    [open_paren, expr, close_paren])
+    [open_paren, expr, close_paren],
+    )
 
 
 def tokenize(string):
@@ -231,6 +223,9 @@ def tokenize(string):
     op_muldiv,
     open_paren,
     close_paren,
+    open_square_bracket,
+    close_square_bracket,
+    comma,
     variable])
 
 
@@ -256,7 +251,7 @@ def test_tokenize():
 def test_parse():
   def check(string, expected_value):
     parse_tree = parser.parse(expr, tokenize(string))
-    computed_value = parse_tree.eval(global_context)
+    computed_value = parse_tree.eval(Context())
     if computed_value != expected_value:
       raise ValueError('Got %s expected %s for %s' % (
         computed_value,
