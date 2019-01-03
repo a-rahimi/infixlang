@@ -1,5 +1,5 @@
 class ParseError(Exception):
-  def __init__(self, message=None, rule=None, stream=None):
+  def __init__(self, message='', rule=None, stream=None):
     self.message = message
     self.rule = rule
     self.stream = stream
@@ -46,7 +46,7 @@ class Rule(object):
         pass
 
     # none of the rules matched. fail.
-    raise ParseError(rule=cls, stream=stream)
+    raise ParseError(message='No grammar rule matched', rule=cls, stream=stream)
 
 
 class Terminal(Rule):
@@ -75,6 +75,11 @@ class Terminal(Rule):
 
 
 def parse(production_rule_root, stream):
+  """A convenience routine for parsing.
+
+  This routine calls production_rule_root.parse(stream) and
+  ensures that it's consumed the entire stream.
+  """
   try:
     p, new_stream = production_rule_root.parse(stream)
   except ParseError as e:
@@ -108,6 +113,7 @@ def tokenize(string, tokens):
         stream.append(token)
         break
     if not token:
-      raise ValueError('Unrecognized:' + string)
+      raise ParseError(message='Unrecognized:' + string,
+                       stream=stream)
 
   return stream

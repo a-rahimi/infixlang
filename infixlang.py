@@ -40,7 +40,7 @@ class UnknownVariableError(Error):
     return s
 
   def __repr__(self):
-    return 'Unknown variable %s.\nStacktrace:\n%s\n' % (
+    return 'Unknown variable %s.\nStacktrace:\n%s' % (
         self.varname,
         self.stacktrace())
 
