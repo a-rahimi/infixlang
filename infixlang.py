@@ -1,8 +1,29 @@
 import parser
-reload(parser)
 
+# Some design notes:
+#
+#   The parse tree and the evaluation tree are one and the same. This makes
+#   sense for trivial languages like this with no support for optimization,
+#   compilation, or multiple backens.
+#
+#   I tried to make contexts (what scheme calls "environments", or what
+#   hardware calls a stackframe) first order objects. I'm imagining you could
+#   perform operations on them, like pass them around as objects, modify the
+#   current context in a in called subroutine, concatenate them, etc. I don't
+#   know why that'd be good, but I wanted a way to experiment with this
+#   ability.
+#
+#   I tried to make the parse tree a first order object too. The ~ operator
+#   assigns the parse tree of the rhs to the lhs without evaluating the rhs.
+#   When the lhs is evaluated later, the parse tree in the rhs is evaluated in
+#   the current context. I imagined this would be a nice way to decouple
+#   functions from their environments. When you combine this with contexts as
+#   first order objects, you can implement traditional closures. But hopefully
+#   you can do more interesting things too. To be experimented with...
+#
 
 class Context(object):
+  """Evaluation contexts attach values to variables."""
 
   class Slot(object):
     def __init__(self, context, name):
@@ -35,9 +56,7 @@ class Context(object):
     return s
 
 
-global_context = Context()
-
-
+# ----- Objects in the parse tree.
 
 class expr(parser.Rule):
   def eval(self, context):
@@ -108,6 +127,8 @@ class expr_highest_precedence(expr):
       # parentheses.
       return self.val[1].eval(context)
  
+
+# ----- The terminal tokens
 
 class Value(parser.Terminal):
   def eval(self, context):
@@ -229,7 +250,23 @@ class close_paren(parser.Terminal):
     return token == ')'
 
 
-# The actual production rules.
+def tokenize(string):
+  return parser.tokenize(string, [
+    integer,
+    op_assignment,
+    op_link,
+    op_plusminus,
+    op_muldiv,
+    open_paren,
+    close_paren,
+    open_square_bracket,
+    close_square_bracket,
+    comma,
+    variable])
+
+
+# ----- The production rules.
+
 expr_sequence.rules = (
     [expr, comma, expr_sequence],
     [expr, expr_sequence],
@@ -270,172 +307,3 @@ expr_highest_precedence.rules = (
     context_definition,
     )
 
-
-def tokenize(string):
-  return parser.tokenize(string, [
-    integer,
-    op_assignment,
-    op_link,
-    op_plusminus,
-    op_muldiv,
-    open_paren,
-    close_paren,
-    open_square_bracket,
-    close_square_bracket,
-    comma,
-    variable])
-
-
-def test_tokenize():
-  def check(string):
-    tokens = tokenize(string)
-    stringified = ''.join(str(tok) for tok in tokens)
-    expected = string.translate(None, ' ')
-    if stringified != expected:
-      raise ValueError('Got %s for %s' % (
-        stringified,
-        expected))
-
-  check('2+3*4')
-  check('2 *  3 +4')
-  check('(2 +3)*4')
-  check('( 2+3 )*0')
-  check('foo = 23 * 2  bar = foo * 2')
-
-  print 'OK tokenize'
-
-
-def test_parse():
-  def check(string, expected_value):
-    parse_tree = parser.parse(expr, tokenize(string))
-    computed_value = parse_tree.eval(Context())
-    if computed_value != expected_value:
-      raise ValueError('Got %s expected %s for %s' % (
-        computed_value,
-        expected_value, 
-        string))
-
-  check('2+3*4', 14)
-  check('2 *  3 +4', 10)
-  check('(2+3)*4', 20)
-  check('(2+3)*0', 0)
-
-  print 'OK parse'
-
-
-def test_assignment():
-  context = Context()
-  parser.parse(expr, tokenize('foo = 2 * 23')).eval(context)
-  assert context.slots['foo'] == 46
-  parser.parse(expr, tokenize('bar = foo + 2')).eval(context)
-  assert context.slots['bar'] == 48
-
-  context = Context()
-  tokens = tokenize('a = 2* 23   b = a + 2 b')
-  p, tokens = expr.parse(tokens)
-  p.eval(context)
-  p, tokens = expr.parse(tokens)
-  p.eval(context)
-  p, tokens = expr.parse(tokens)
-  assert p.eval(context) == 48
-  assert not tokens
-  assert context.slots['a'] == 46
-  assert context.slots['b'] == 48
-  print 'OK assignment'
-
-
-def test_expr_sequence():
-  context = Context()
-  parser.parse(expr_sequence, tokenize('foo = 2 * 23')).eval(context)
-  assert context.slots['foo'] == 46
-
-  tokens = tokenize('a = 2* 23,  b = a + 2')
-  p = parser.parse(expr_sequence, tokens)
-  context = Context()
-  assert p.eval(context) == 48
-  assert context.slots['a'] == 46
-  assert context.slots['b'] == 48
-
-  tokens = tokenize('a = 2* 23,  b = a + 2, b')
-  p = parser.parse(expr_sequence, tokens)
-  context = Context()
-  assert p.eval(context) == context.slots['b']
-
-  print 'OK expr sequence'
-
-
-
-def test_contexts():
-  context = Context()
-  tokens = tokenize('a = 2* 3, c = [b = a + 2, 2*b]')
-  p = parser.parse(expr_sequence, tokens)
-  assert p.eval(context) == 16
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['c'] == 16
-
-  context = Context()
-  tokens = tokenize('a = 2* 3 c = [b = a + 2, 2*b]')
-  p = parser.parse(expr_sequence, tokens)
-  assert p.eval(context) == 16
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['c'] == 16
-
-
-  context = Context()
-  tokens = tokenize('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')
-  p = parser.parse(expr_sequence, tokens)
-  assert p.eval(context) == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['d'] == 8
-
-  context = Context()
-  tokens = tokenize('a = 2* 3  d = [aa=2  [b = aa + 2    2*b]]')
-  p = parser.parse(expr_sequence, tokens)
-  assert p.eval(context) == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['d'] == 8
-
-
-  context = Context()
-  tokens = tokenize('a = [2], b = [a]')
-  p = parser.parse(expr_sequence, tokens)
-  p.eval(context)
-  assert context.slots['b'] == 2
-
-  context = Context()
-  tokens = tokenize('a ~ [3], b = [a]')
-  p = parser.parse(expr_sequence, tokens)
-  assert p.eval(context) == 3
-  assert context.slots['b'] == 3
-
-  context = Context()
-  tokens = tokenize('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]')
-  p = parser.parse(expr_sequence, tokens)
-  p.eval(context)
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert 'c' in context.slots
-  assert context.slots['d'] == 8
-
-  context = Context()
-  tokens = tokenize('a = 2* 3    c ~ [b = aa + 2     2*b]    d = [aa=2 c]')
-  assert parser.parse(expr_sequence, tokens).eval(context) == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert 'c' in context.slots
-  assert context.slots['d'] == 8
-
-
-  print 'OK contexts'
-
-
-def tests():
-  test_tokenize()
-  test_parse()
-  test_assignment()
-  test_expr_sequence()
-  test_contexts()
