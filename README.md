@@ -105,7 +105,7 @@ There's an interactive environment. It works like this:
   >>
 ```
 
-Here's what's happening in thie session: Nothing surprising in the first
+Here's what's happening in this session: Nothing surprising in the first
 three lines. The line `func ~ a+b` defines a variable `func` that points to the
 parse tree of the expression `a+b`. The next line creates a context in which
 a=1, b=2, and evaluates `func` in that context. The final line evaluates

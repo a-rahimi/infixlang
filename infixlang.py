@@ -127,17 +127,15 @@ class context_definition(expr):
   def eval(self, context):
     assert isinstance(self.val[0], open_square_bracket)
     assert isinstance(self.val[-1], close_square_bracket)
-    return self.val[1].eval(Context(parent=context))
+    new_context = Context(parent=context)
+    return self.val[1].eval(new_context)
 
 class expr_highest_precedence(expr):
-
   def eval(self, context):
     if isinstance(self.val, integer):
-      # an integer
       return self.val.eval(context)
     if isinstance(self.val[0], open_paren):
-      # a parenthesized expression. return the expression and ignore the
-      # parentheses.
+      # a parenthesized expression. return the expression inside
       return self.val[1].eval(context)
  
 
@@ -174,7 +172,7 @@ class variable(Value):
   @classmethod
   def tokenize(cls, string):
     w = ''
-    while string and string[0].isalnum():
+    while string and (string[0].isalnum() or string[0] == '_'):
       w += string[0]
       string = string[1:]
 

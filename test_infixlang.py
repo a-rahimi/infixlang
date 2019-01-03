@@ -65,6 +65,18 @@ def test_assignment():
   assert context.slots['a'] == 46
   assert context.slots['b'] == 48
 
+  context = infixlang.Context()
+  tokens = T('a_bbbb = 2*23   b_a = a_bbbb + 2 a_bbbb')
+  p, tokens = infixlang.expr.parse(tokens)
+  p.eval(context)
+  p, tokens = infixlang.expr.parse(tokens)
+  p.eval(context)
+  p, tokens = infixlang.expr.parse(tokens)
+  assert not tokens
+  assert p.eval(context) == 46
+  assert context.slots['a_bbbb'] == 46
+  assert context.slots['b_a'] == 48
+
   print 'OK assignment'
 
 
