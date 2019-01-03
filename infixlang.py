@@ -51,7 +51,7 @@ class expr(parser.Rule):
 
 class expr_sequence(expr):
   def eval(self, context):
-    assert len(self.val) in [1,3]
+    assert len(self.val) in [1,2,3]
 
     r = self.val[0].eval(context)
 
@@ -59,6 +59,9 @@ class expr_sequence(expr):
       assert isinstance(self.val[1], comma)
       assert isinstance(self.val[2], expr_sequence)
       return self.val[2].eval(context)
+    elif len(self.val) == 2:
+      assert isinstance(self.val[1], expr_sequence)
+      return self.val[1].eval(context)
 
     return r
 
@@ -229,6 +232,7 @@ class close_paren(parser.Terminal):
 # The actual production rules.
 expr_sequence.rules = (
     [expr, comma, expr_sequence],
+    [expr, expr_sequence],
     [expr],
     )
 
@@ -371,12 +375,30 @@ def test_contexts():
   assert context.slots['c'] == 16
 
   context = Context()
+  tokens = tokenize('a = 2* 3 c = [b = a + 2, 2*b]')
+  p = parser.parse(expr_sequence, tokens)
+  assert p.eval(context) == 16
+  assert context.slots['a'] == 6
+  assert 'b' not in context.slots
+  assert context.slots['c'] == 16
+
+
+  context = Context()
   tokens = tokenize('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')
   p = parser.parse(expr_sequence, tokens)
   assert p.eval(context) == 8
   assert context.slots['a'] == 6
   assert 'b' not in context.slots
   assert context.slots['d'] == 8
+
+  context = Context()
+  tokens = tokenize('a = 2* 3  d = [aa=2  [b = aa + 2    2*b]]')
+  p = parser.parse(expr_sequence, tokens)
+  assert p.eval(context) == 8
+  assert context.slots['a'] == 6
+  assert 'b' not in context.slots
+  assert context.slots['d'] == 8
+
 
   context = Context()
   tokens = tokenize('a = [2], b = [a]')
@@ -398,6 +420,15 @@ def test_contexts():
   assert 'b' not in context.slots
   assert 'c' in context.slots
   assert context.slots['d'] == 8
+
+  context = Context()
+  tokens = tokenize('a = 2* 3    c ~ [b = aa + 2     2*b]    d = [aa=2 c]')
+  assert parser.parse(expr_sequence, tokens).eval(context) == 8
+  assert context.slots['a'] == 6
+  assert 'b' not in context.slots
+  assert 'c' in context.slots
+  assert context.slots['d'] == 8
+
 
   print 'OK contexts'
 
