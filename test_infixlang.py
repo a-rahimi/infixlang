@@ -5,9 +5,28 @@
 import parser
 import infixlang
 
-# aliases for commonly used operations
+# commonly used operations throughout the tests
 T = infixlang.tokenize
-P = parser.parse
+
+def parse(production_rule_root, stream):
+  """Parse & ensure token stream is fully consumed.
+  """
+  try:
+    p, stream_rest = production_rule_root.parse(stream)
+  except parser.ParseError as e:
+    e.original_stream = stream
+    raise e
+
+  if stream_rest:
+    e = parser.ParseError(
+        message="Couldn't parse the entire stream",
+        stream=stream_rest)
+    e.original_stream = stream
+    e.parse_so_far = p
+    raise e
+
+  return p
+
 
 def test_tokenize():
   def check(string):
@@ -29,7 +48,7 @@ def test_tokenize():
 
 def test_parse():
   def check(string, expected_value):
-    parse_tree = P(infixlang.expr, T(string))
+    parse_tree = parse(infixlang.expr, T(string))
     computed_value = parse_tree.eval(infixlang.Context())
     if computed_value != expected_value:
       raise ValueError('Got %s expected %s for %s' % (
@@ -47,9 +66,9 @@ def test_parse():
 
 def test_assignment():
   context = infixlang.Context()
-  P(infixlang.expr, T('foo = 2 * 23')).eval(context)
+  parse(infixlang.expr, T('foo = 2 * 23')).eval(context)
   assert context.slots['foo'] == 46
-  P(infixlang.expr, T('bar = foo + 2')).eval(context)
+  parse(infixlang.expr, T('bar = foo + 2')).eval(context)
   assert context.slots['foo'] == 46
   assert context.slots['bar'] == 48
 
@@ -82,17 +101,17 @@ def test_assignment():
 
 def test_expr_sequence():
   context = infixlang.Context()
-  P(infixlang.expr_sequence, T('foo = 2 * 23')).eval(context)
+  parse(infixlang.expr_sequence, T('foo = 2 * 23')).eval(context)
   assert context.slots['foo'] == 46
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2'))
+  p = parse(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2'))
   assert p.eval(context) == 48
   assert context.slots['a'] == 46
   assert context.slots['b'] == 48
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2, b'))
+  p = parse(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2, b'))
   assert p.eval(context) == context.slots['b']
 
   print 'OK expr sequence'
@@ -100,21 +119,21 @@ def test_expr_sequence():
 
 def test_contexts():
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence, T('a = 2* 3, c = [b = a + 2, 2*b]'))
+  p = parse(infixlang.expr_sequence, T('a = 2* 3, c = [b = a + 2, 2*b]'))
   assert p.eval(context) == 16
   assert context.slots['a'] == 6
   assert 'b' not in context.slots
   assert context.slots['c'] == 16
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence, T('a = 2* 3 c = [b = a + 2, 2*b]'))
+  p = parse(infixlang.expr_sequence, T('a = 2* 3 c = [b = a + 2, 2*b]'))
   assert p.eval(context) == 16
   assert context.slots['a'] == 6
   assert 'b' not in context.slots
   assert context.slots['c'] == 16
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence,
+  p = parse(infixlang.expr_sequence,
         T('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]'))
   assert p.eval(context) == 8
   assert context.slots['a'] == 6
@@ -122,7 +141,7 @@ def test_contexts():
   assert context.slots['d'] == 8
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence,
+  p = parse(infixlang.expr_sequence,
        T('a = 2* 3  d = [aa=2  [b = aa + 2 2*b]]'))
   assert p.eval(context) == 8
   assert context.slots['a'] == 6
@@ -130,17 +149,17 @@ def test_contexts():
   assert context.slots['d'] == 8
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence, T('a = [2], b = [a]'))
+  p = parse(infixlang.expr_sequence, T('a = [2], b = [a]'))
   assert p.eval(context) == 2
   assert context.slots['b'] == 2
 
   context = infixlang.Context()
-  p = parser.parse(infixlang.expr_sequence, T('a ~ [3], b = [a]'))
+  p = parse(infixlang.expr_sequence, T('a ~ [3], b = [a]'))
   assert p.eval(context) == 3
   assert context.slots['b'] == 3
 
   context = infixlang.Context()
-  p = P(infixlang.expr_sequence, 
+  p = parse(infixlang.expr_sequence, 
         T('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]'))
   assert p.eval(context) == 8
   assert context.slots['a'] == 6
@@ -153,7 +172,7 @@ def test_contexts():
       a = 2 * 3
       c ~ [b = aa + 2     2*b]
       d = [aa=2 c]""")
-  assert P(infixlang.expr_sequence, tokens).eval(context) == 8
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 8
   assert context.slots['a'] == 6
   assert 'b' not in context.slots
   assert 'c' in context.slots

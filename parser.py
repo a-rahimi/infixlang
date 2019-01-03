@@ -79,28 +79,6 @@ class LiteralToken(Terminal):
     return None, string
 
 
-def parse(production_rule_root, stream):
-  """A convenience routine for parsing.
-
-  This routine calls production_rule_root.parse(stream) and
-  ensures that it's consumed the entire stream.
-  """
-  try:
-    p, new_stream = production_rule_root.parse(stream)
-  except ParseError as e:
-    e.original_stream = stream
-    raise e
-
-  if new_stream:
-    e = ParseError(
-        message="Couldn't parse the entire stream",
-        stream=new_stream)
-    e.original_stream = stream
-    e.parse_so_far = p
-    raise e
-
-  return p
-
 # support for tokenizing the input
 
 def eat_whitespace(string):
