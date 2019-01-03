@@ -54,14 +54,8 @@ class Terminal(Rule):
     return str(self.val)
 
   @classmethod
-  def ismatch(cls, token):
-    raise NotImplementedError
-
-  @classmethod
   def tokenize(cls, string):
-    if cls.ismatch(string[0]):
-      return cls(string[0]), string[1:]
-    return None, string
+    raise NotImplementedError
 
   @classmethod
   def parse(cls, stream):
@@ -72,6 +66,17 @@ class Terminal(Rule):
       raise ParseError(rule=cls, stream=stream)
 
     return stream[0], stream[1:]
+
+
+class LiteralToken(Terminal):
+  tokens = {}
+
+  @classmethod
+  def tokenize(cls, string):
+    for token in cls.tokens:
+      if string.startswith(token):
+        return cls(token), string[len(token):]
+    return None, string
 
 
 def parse(production_rule_root, stream):

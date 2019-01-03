@@ -73,6 +73,7 @@ class Context(object):
     s = 'Context{' + ', '.join('%s:%s' % item for item in self.slots.iteritems()) + '}'
     return s
 
+
 # ----- Objects in the parse tree.
 
 class expr(parser.Rule):
@@ -115,10 +116,16 @@ class expr_link(expr):
 
 class expr_plusminus(expr):
   def eval(self, context):
+    op = {
+      '+': int.__add__,
+      '-': int.__sub__,
+      '*': int.__mul__,
+      '/': int.__div__
+    }[self.val[1].val]
+
     # in non-assignment contexts, both operators are evaluated a rhs
-    return self.val[1].func(
-        self.val[0].eval_rhs(context),
-        self.val[2].eval_rhs(context))
+    return op(self.val[0].eval_rhs(context),
+              self.val[2].eval_rhs(context))
 
 class expr_muldiv(expr_plusminus):
   pass
@@ -191,58 +198,32 @@ class variable(Value):
     return self.eval_rhs(context)
 
 
-class op_assignment(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == '='
+class op_assignment(parser.LiteralToken):
+  tokens = {'='}
 
-class op_link(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == '~'
+class op_link(parser.LiteralToken):
+  tokens = {'~'}
 
-class op_plusminus(parser.Terminal):
-  def __init__(self, val):
-    self.val = val
-    self.func = {'+': int.__add__, '-': int.__sub__}[val] 
+class op_plusminus(parser.LiteralToken):
+  tokens = {'-', '+'}
 
-  @classmethod
-  def ismatch(cls, token):
-    return token in ['-', '+']
+class op_muldiv(parser.LiteralToken):
+  tokens = {'*', '/'}
 
-class op_muldiv(parser.Terminal):
-  def __init__(self, val):
-    self.val = val
-    self.func = {'*': int.__mul__, '/': int.__div__}[val] 
+class comma(parser.LiteralToken):
+  tokens = {','}
 
-  @classmethod
-  def ismatch(cls, token):
-    return token in ['*', '/']
+class open_square_bracket(parser.LiteralToken):
+  tokens = {'['}
 
-class comma(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == ','
+class close_square_bracket(parser.LiteralToken):
+  tokens = {']'}
 
-class open_square_bracket(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == '['
+class open_paren(parser.LiteralToken):
+  tokens = {'('}
 
-class close_square_bracket(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == ']'
-
-class open_paren(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == '('
-
-class close_paren(parser.Terminal):
-  @classmethod
-  def ismatch(cls, token):
-    return token == ')'
+class close_paren(parser.LiteralToken):
+  tokens = {')'}
 
 
 def tokenize(string):
@@ -301,4 +282,3 @@ expr_highest_precedence.rules = (
     [open_paren, expr, close_paren],
     context_definition,
     )
-
