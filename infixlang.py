@@ -36,15 +36,11 @@ class UnknownVariableError(Error):
         self.context.stacktrace())
 
 class Context(object):
-  """Evaluation contexts attach values to variables."""
+  """Evaluation contexts attach values to variables.
 
-  class Slot(object):
-    def __init__(self, context, name):
-      self.context = context
-      self.name = name
-
-    def set_value(self, value):
-      self.context.slots[self.name] = value
+  If a name is not in the current context, it's looked up in the context's
+  parent.
+  """
 
   def __init__(self, parent=None):
     self.slots = {}
@@ -61,17 +57,17 @@ class Context(object):
         return self.parent.get_slot_rhs(name)
       raise UnknownVariableError(self, name)
 
-  def get_slot_lhs(self, name):
-    return self.Slot(self, name)
+  def set_slot(self, name, value):
+    self.slots[name] = value
+    return value
  
   def stacktrace(self):
     return '   ' + str(self.context) + '\n' + (
-        self.parent.stacktrace() if self.parent else ''
-        )
+        self.parent.stacktrace() if self.parent else '')
 
   def __str__(self):
-    s = 'Context{' + ', '.join('%s:%s' % item for item in self.slots.iteritems()) + '}'
-    return s
+    return 'Context{' + ', '.join(
+        '%s:%s' % item for item in self.slots.iteritems()) + '}'
 
 
 # ----- Objects in the parse tree.
@@ -101,18 +97,16 @@ class expr_sequence(expr):
 
 class expr_assignment(expr):
   def eval(self, context):
-    lhs = self.val[0].eval_lhs(context)
+    lhs_varname = self.val[0].eval_lhs(context)
     rhs = self.val[2].eval_rhs(context)
-    lhs.set_value(rhs)
-    return rhs
+    return context.set_slot(lhs_varname, rhs)
 
 class expr_link(expr):
   def eval(self, context):
     # in the context of a link, the rhs isn't evaluated at all.
-    lhs = self.val[0].eval_lhs(context)
+    lhs_varname = self.val[0].eval_lhs(context)
     rhs_ref = expr_reference(self.val[2])
-    lhs.set_value(rhs_ref)
-    return rhs_ref
+    return context.set_slot(lhs_varname, rhs_ref)
 
 class expr_plusminus(expr):
   def eval(self, context):
@@ -186,7 +180,7 @@ class variable(Value):
     return (cls(w) if w else None), string
 
   def eval_lhs(self, context):
-    return context.get_slot_lhs(self.val)
+    return self.val
 
   def eval_rhs(self, context):
     v = context.get_slot_rhs(self.val)
