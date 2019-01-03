@@ -15,6 +15,7 @@ def repl():
 
     tokens = tokens + infixlang.tokenize(ln)
     parse_tree, tokens = infixlang.expr_sequence.parse(tokens)
+
     try:
       result = parse_tree.eval(global_context)
     except infixlang.Error as e:
@@ -22,7 +23,5 @@ def repl():
       continue
     print result
 
-
-  
 if __name__ == '__main__':
   repl()

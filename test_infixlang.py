@@ -1,3 +1,7 @@
+"""Run these tests with nose:
+
+  nosetests -v
+"""
 import parser
 import infixlang
 
@@ -45,8 +49,8 @@ def test_assignment():
   context = infixlang.Context()
   P(infixlang.expr, T('foo = 2 * 23')).eval(context)
   assert context.slots['foo'] == 46
-
   P(infixlang.expr, T('bar = foo + 2')).eval(context)
+  assert context.slots['foo'] == 46
   assert context.slots['bar'] == 48
 
   context = infixlang.Context()
@@ -56,8 +60,8 @@ def test_assignment():
   p, tokens = infixlang.expr.parse(tokens)
   p.eval(context)
   p, tokens = infixlang.expr.parse(tokens)
-  assert p.eval(context) == 48
   assert not tokens
+  assert p.eval(context) == 48
   assert context.slots['a'] == 46
   assert context.slots['b'] == 48
 
@@ -75,8 +79,8 @@ def test_expr_sequence():
   assert context.slots['a'] == 46
   assert context.slots['b'] == 48
 
-  p = P(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2, b'))
   context = infixlang.Context()
+  p = P(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2, b'))
   assert p.eval(context) == context.slots['b']
 
   print 'OK expr sequence'
@@ -115,7 +119,7 @@ def test_contexts():
 
   context = infixlang.Context()
   p = P(infixlang.expr_sequence, T('a = [2], b = [a]'))
-  p.eval(context)
+  assert p.eval(context) == 2
   assert context.slots['b'] == 2
 
   context = infixlang.Context()
@@ -126,7 +130,7 @@ def test_contexts():
   context = infixlang.Context()
   p = P(infixlang.expr_sequence, 
         T('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]'))
-  p.eval(context)
+  assert p.eval(context) == 8
   assert context.slots['a'] == 6
   assert 'b' not in context.slots
   assert 'c' in context.slots
@@ -144,11 +148,3 @@ def test_contexts():
   assert context.slots['d'] == 8
 
   print 'OK contexts'
-
-
-def tests():
-  test_tokenize()
-  test_parse()
-  test_assignment()
-  test_expr_sequence()
-  test_contexts()

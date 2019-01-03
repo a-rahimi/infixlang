@@ -1,10 +1,10 @@
-# Oops, this turned into a programming language
+# Infix arithmetic
 
 You shouldn't use any of the code from this. You'll also probably not learn
 anything good from it.
 
 When I was in high school, I tried to write code to parse and evaluate infix
-expressions with operator precendence, like this:
+expressions with operator precedence, like this:
 
   ```
   2 + 3 * 4 - 2 * (3-2)
@@ -13,16 +13,21 @@ expressions with operator precendence, like this:
 (the answer is 12).
 
 It's one of those problems most programming fans solve early on in their
-livesi, but my solutions as a youth never could handle all expressions in their
+lives, but my solutions as a youth never could handle all expressions in their
 generality correctly (depending on my attempt, parentheses would be hard to handle,
-or it'd get tripped up by operator precedence, or I'd face some infinite
-recursion).
+or I'd get tripped up by operator precedence, or I'd face some infinite
+recursion). I knew about the [Shunting-Yard](https://en.wikipedia.org/wiki/Shunting-yard_algorithm)
+algorithm, but like Pierre Menard, I wanted to invent it myself.
+
+
+# Oops, this turned into a programming language
 
 Now I'm an adult, on a family vacation, with some time on my hands (or rather,
-desperately in need for some time to myself). So I'm tackling this problem again after 
-25 years.
+desperately in need for some time to myself). So I'm tackling this problem once 
+again after 25 years.
 
 It kind of got out of hand.
+
 
 ## Features
 
