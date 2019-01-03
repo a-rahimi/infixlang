@@ -17,7 +17,7 @@ class ParseError(Exception):
     return msg
 
 
-class Rule:
+class Rule(object):
   rules = None
 
   def __init__(self, val):
