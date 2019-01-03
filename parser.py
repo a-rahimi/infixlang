@@ -107,11 +107,15 @@ def tokenize(string, tokens):
   stream = []
   while string:
     string = eat_whitespace(string)
+    if not string:
+      break
+
     for tok in tokens:
       token, string = tok.tokenize(string)
       if token:
         stream.append(token)
         break
+
     if not token:
       raise ParseError(message='Unrecognized:' + string,
                        stream=stream)

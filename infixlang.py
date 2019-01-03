@@ -4,21 +4,21 @@ import parser
 #
 #   The parse tree and the evaluation tree are one and the same. This makes
 #   sense for trivial languages like this with no support for optimization,
-#   compilation, or multiple backens.
+#   compilation, or multiple backens. One day, I'll split these up.
 #
 #   I tried to make contexts (what scheme calls "environments", or what
 #   hardware calls a stackframe) first order objects. I'm imagining you could
 #   perform operations on them, like pass them around as objects, modify the
-#   current context in a in called subroutine, concatenate them, etc. I don't
-#   know why that'd be good, but I wanted a way to experiment with this
+#   current context in a called subroutine, concatenate them, etc. I don't
+#   know why you'd want to do this, but I wanted a way to experiment with this
 #   ability.
 #
 #   I tried to make the parse tree a first order object too. The ~ operator
 #   assigns the parse tree of the rhs to the lhs without evaluating the rhs.
-#   When the lhs is evaluated later, the parse tree in the rhs is evaluated in
-#   the current context. I imagined this would be a nice way to decouple
+#   Wherever the lhs is later evaluated, the parse tree is evaluated in
+#   that context. I imagined this would be a nice way to decouple
 #   functions from their environments. When you combine this with contexts as
-#   first order objects, you can implement traditional closures. But hopefully
+#   first order objects, you get traditional closures for free. But hopefully
 #   you can do more interesting things too. To be experimented with...
 #
 
@@ -86,31 +86,20 @@ class expr(parser.Rule):
     return self.eval(context)
 
 class expr_reference(expr):
-  def __init__(self, val):
-    self.val = val
-
   def __repr__(self):
     return "@" + str(self.val)
 
 class expr_sequence(expr):
   def eval(self, context):
-    assert len(self.val) in [1,2,3]
-
-    r = self.val[0].eval(context)
-
-    if len(self.val) == 3:
-      assert isinstance(self.val[1], comma)
-      assert isinstance(self.val[2], expr_sequence)
-      return self.val[2].eval(context)
-    elif len(self.val) == 2:
-      assert isinstance(self.val[1], expr_sequence)
-      return self.val[1].eval(context)
-
-    return r
+    # the value of a sequence is the value of its last element. all preceding
+    # elements are evaluated for their side-effect only.
+    self.val[0].eval(context)
+    # the second term is either at index 2 if there's an intervening comma,
+    # or at index 1 if there's no comma
+    return self.val[-1].eval(context)
 
 class expr_assignment(expr):
   def eval(self, context):
-    # in the context of an assignment, the left operator is evaluated as lhs.
     lhs = self.val[0].eval_lhs(context)
     rhs = self.val[2].eval_rhs(context)
     lhs.set_value(rhs)
@@ -118,8 +107,7 @@ class expr_assignment(expr):
 
 class expr_link(expr):
   def eval(self, context):
-    # in the context of a link, the left operator is evaluated as lhs,
-    # and the rhs isn't evaluated at all.
+    # in the context of a link, the rhs isn't evaluated at all.
     lhs = self.val[0].eval_lhs(context)
     rhs_ref = expr_reference(self.val[2])
     lhs.set_value(rhs_ref)
@@ -138,7 +126,6 @@ class expr_muldiv(expr_plusminus):
 class context_definition(expr):
   def eval(self, context):
     assert isinstance(self.val[0], open_square_bracket)
-    assert isinstance(self.val[1], expr_sequence)
     assert isinstance(self.val[-1], close_square_bracket)
     return self.val[1].eval(Context(parent=context))
 
@@ -280,7 +267,7 @@ def tokenize(string):
 expr_sequence.rules = (
     [expr, comma, expr_sequence],
     [expr, expr_sequence],
-    [expr],
+    expr,
     )
 
 expr.rules = (
