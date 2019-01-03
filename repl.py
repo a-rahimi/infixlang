@@ -4,7 +4,7 @@ import readline
 import parser
 import infixlang
 
-def repl():
+def repl(stream=None):
   global_context = infixlang.Context()
 
   while True:

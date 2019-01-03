@@ -29,21 +29,11 @@ class UnknownVariableError(Error):
   def __init__(self, context, varname):
     self.context = context
     self.varname = varname
-  
-  def stacktrace(self):
-    s = ''
-    context = self.context
-    while context:
-      s += '   ' + str(self.context) + '\n'
-      context = context.parent
-
-    return s
 
   def __repr__(self):
     return 'Unknown variable %s.\nStacktrace:\n%s' % (
         self.varname,
-        self.stacktrace())
-
+        self.context.stacktrace())
 
 class Context(object):
   """Evaluation contexts attach values to variables."""
@@ -73,11 +63,15 @@ class Context(object):
 
   def get_slot_lhs(self, name):
     return self.Slot(self, name)
+ 
+  def stacktrace(self):
+    return '   ' + str(self.context) + '\n' + (
+        self.parent.stacktrace() if self.parent else ''
+        )
 
   def __str__(self):
     s = 'Context{' + ', '.join('%s:%s' % item for item in self.slots.iteritems()) + '}'
     return s
-
 
 # ----- Objects in the parse tree.
 
@@ -90,6 +84,13 @@ class expr(parser.Rule):
 
   def eval_rhs(self, context):
     return self.eval(context)
+
+class expr_reference(expr):
+  def __init__(self, val):
+    self.val = val
+
+  def __repr__(self):
+    return "@" + str(self.val)
 
 class expr_sequence(expr):
   def eval(self, context):
@@ -110,17 +111,19 @@ class expr_sequence(expr):
 class expr_assignment(expr):
   def eval(self, context):
     # in the context of an assignment, the left operator is evaluated as lhs.
-    return self.val[1].func(
-        self.val[0].eval_lhs(context),
-        self.val[2].eval_rhs(context))
+    lhs = self.val[0].eval_lhs(context)
+    rhs = self.val[2].eval_rhs(context)
+    lhs.set_value(rhs)
+    return rhs
 
 class expr_link(expr):
   def eval(self, context):
     # in the context of a link, the left operator is evaluated as lhs,
     # and the rhs isn't evaluated at all.
-    return self.val[1].func(
-        self.val[0].eval_lhs(context),
-        self.val[2])
+    lhs = self.val[0].eval_lhs(context)
+    rhs_ref = expr_reference(self.val[2])
+    lhs.set_value(rhs_ref)
+    return rhs_ref
 
 class expr_plusminus(expr):
   def eval(self, context):
@@ -195,7 +198,7 @@ class variable(Value):
 
   def eval_rhs(self, context):
     v = context.get_slot_rhs(self.val)
-    if isinstance(v, Reference):
+    if isinstance(v, expr_reference):
       return v.val.eval(context)
     return v
 
@@ -208,26 +211,10 @@ class op_assignment(parser.Terminal):
   def ismatch(cls, token):
     return token == '='
 
-  def func(self, slot, rhs):
-    slot.set_value(rhs)
-    return rhs
-
-class Reference(expr):
-  def __init__(self, val):
-    self.val = val
-
-  def __repr__(self):
-    return "@" + str(self.val)
-
 class op_link(parser.Terminal):
   @classmethod
   def ismatch(cls, token):
     return token == '~'
-
-  def func(self, slot, rhs):
-    rhs_ref = Reference(rhs)
-    slot.set_value(rhs_ref)
-    return rhs_ref
 
 class op_plusminus(parser.Terminal):
   def __init__(self, val):
