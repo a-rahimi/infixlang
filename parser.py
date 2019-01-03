@@ -18,11 +18,13 @@ class ParseError(Exception):
 
 
 class Rule:
+  rules = None
+
   def __init__(self, val):
     self.val = val
 
   def __repr__(self):
-    return '[' + ', '.join(str(v) for v in self.val) + ']'
+    return '[' + ' '.join(str(v) for v in self.val) + ']'
 
   @classmethod
   def parse(cls, stream):

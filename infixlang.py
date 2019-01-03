@@ -24,7 +24,7 @@ class Context(object):
       return self.slots[name]
     except KeyError:
       if self.parent:
-        return self.parent.get_slot_rhs(self, names)
+        return self.parent.get_slot_rhs(name)
       raise
 
   def get_slot_lhs(self, name):
@@ -40,8 +40,6 @@ global_context = Context()
 
 
 class expr(parser.Rule):
-  rules = None # production rules are defined below.
-
   def eval(self, context):
     raise NotImplementedError
 
@@ -51,18 +49,35 @@ class expr(parser.Rule):
   def eval_rhs(self, context):
     return self.eval(context)
 
-class expr_assignment_like(expr):
-  rules = None # production rules are defined below.
+class expr_sequence(expr):
+  def eval(self, context):
+    assert len(self.val) in [1,3]
 
+    r = self.val[0].eval(context)
+
+    if len(self.val) == 3:
+      assert isinstance(self.val[1], comma)
+      assert isinstance(self.val[2], expr_sequence)
+      return self.val[2].eval(context)
+
+    return r
+
+class expr_assignment(expr):
   def eval(self, context):
     # in the context of an assignment, the left operator is evaluated as lhs.
     return self.val[1].func(
         self.val[0].eval_lhs(context),
         self.val[2].eval_rhs(context))
 
-class expr_plusminus(expr):
-  rules = None # production rules are defined below.
+class expr_link(expr):
+  def eval(self, context):
+    # in the context of a link, the left operator is evaluated as lhs,
+    # and the rhs isn't evaluated at all.
+    return self.val[1].func(
+        self.val[0].eval_lhs(context),
+        self.val[2])
 
+class expr_plusminus(expr):
   def eval(self, context):
     # in non-assignment contexts, both operators are evaluated a rhs
     return self.val[1].func(
@@ -70,10 +85,16 @@ class expr_plusminus(expr):
         self.val[2].eval_rhs(context))
 
 class expr_muldiv(expr_plusminus):
-  rules = None # production rules are defined below.
- 
+  pass
+
+class context_definition(expr):
+  def eval(self, context):
+    assert isinstance(self.val[0], open_square_bracket)
+    assert isinstance(self.val[1], expr_sequence)
+    assert isinstance(self.val[-1], close_square_bracket)
+    return self.val[1].eval(Context(parent=context))
+
 class expr_highest_precedence(expr):
-  rules = None # production rules are defined below.
 
   def eval(self, context):
     if isinstance(self.val, integer):
@@ -126,7 +147,10 @@ class variable(Value):
     return context.get_slot_lhs(self.val)
 
   def eval_rhs(self, context):
-    return context.get_slot_rhs(self.val)
+    v = context.get_slot_rhs(self.val)
+    if isinstance(v, Reference):
+      return v.val.eval(context)
+    return v
 
   def eval(self, context):
     return self.eval_rhs(context)
@@ -141,6 +165,22 @@ class op_assignment(parser.Terminal):
     slot.set_value(rhs)
     return rhs
 
+class Reference(expr):
+  def __init__(self, val):
+    self.val = val
+
+  def __repr__(self):
+    return "@" + str(self.val)
+
+class op_link(parser.Terminal):
+  @classmethod
+  def ismatch(cls, token):
+    return token == '~'
+
+  def func(self, slot, rhs):
+    rhs_ref = Reference(rhs)
+    slot.set_value(rhs_ref)
+    return rhs_ref
 
 class op_plusminus(parser.Terminal):
   def __init__(self, val):
@@ -150,7 +190,6 @@ class op_plusminus(parser.Terminal):
   @classmethod
   def ismatch(cls, token):
     return token in ['-', '+']
-
 
 class op_muldiv(parser.Terminal):
   def __init__(self, val):
@@ -171,7 +210,6 @@ class open_square_bracket(parser.Terminal):
   def ismatch(cls, token):
     return token == '['
 
-
 class close_square_bracket(parser.Terminal):
   @classmethod
   def ismatch(cls, token):
@@ -182,7 +220,6 @@ class open_paren(parser.Terminal):
   def ismatch(cls, token):
     return token == '('
 
-
 class close_paren(parser.Terminal):
   @classmethod
   def ismatch(cls, token):
@@ -190,13 +227,23 @@ class close_paren(parser.Terminal):
 
 
 # The actual production rules.
-expr.rules = (
-    expr_assignment_like,
-    expr_plusminus
+expr_sequence.rules = (
+    [expr, comma, expr_sequence],
+    [expr],
     )
 
-expr_assignment_like.rules = (
-    [variable, op_assignment, expr_plusminus],
+expr.rules = (
+    expr_assignment,
+    expr_link,
+    expr_plusminus,
+    )
+
+expr_assignment.rules = (
+    [variable, op_assignment, expr],
+    )
+
+expr_link.rules = (
+    [variable, op_link, expr],
     )
 
 expr_plusminus.rules = (
@@ -208,10 +255,15 @@ expr_muldiv.rules = (
     [expr_highest_precedence, op_muldiv, expr_muldiv],
     expr_highest_precedence)
 
+context_definition.rules = (
+    [open_square_bracket, expr_sequence, close_square_bracket], 
+    )
+
 expr_highest_precedence.rules = (
     integer,
     variable,
     [open_paren, expr, close_paren],
+    context_definition,
     )
 
 
@@ -219,6 +271,7 @@ def tokenize(string):
   return parser.tokenize(string, [
     integer,
     op_assignment,
+    op_link,
     op_plusminus,
     op_muldiv,
     open_paren,
@@ -287,7 +340,71 @@ def test_assignment():
   print 'OK assignment'
 
 
+def test_expr_sequence():
+  context = Context()
+  parser.parse(expr_sequence, tokenize('foo = 2 * 23')).eval(context)
+  assert context.slots['foo'] == 46
+
+  tokens = tokenize('a = 2* 23,  b = a + 2')
+  p = parser.parse(expr_sequence, tokens)
+  context = Context()
+  assert p.eval(context) == 48
+  assert context.slots['a'] == 46
+  assert context.slots['b'] == 48
+
+  tokens = tokenize('a = 2* 23,  b = a + 2, b')
+  p = parser.parse(expr_sequence, tokens)
+  context = Context()
+  assert p.eval(context) == context.slots['b']
+
+  print 'OK expr sequence'
+
+
+
+def test_contexts():
+  context = Context()
+  tokens = tokenize('a = 2* 3, c = [b = a + 2, 2*b]')
+  p = parser.parse(expr_sequence, tokens)
+  assert p.eval(context) == 16
+  assert context.slots['a'] == 6
+  assert 'b' not in context.slots
+  assert context.slots['c'] == 16
+
+  context = Context()
+  tokens = tokenize('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')
+  p = parser.parse(expr_sequence, tokens)
+  assert p.eval(context) == 8
+  assert context.slots['a'] == 6
+  assert 'b' not in context.slots
+  assert context.slots['d'] == 8
+
+  context = Context()
+  tokens = tokenize('a = [2], b = [a]')
+  p = parser.parse(expr_sequence, tokens)
+  p.eval(context)
+  assert context.slots['b'] == 2
+
+  context = Context()
+  tokens = tokenize('a ~ [3], b = [a]')
+  p = parser.parse(expr_sequence, tokens)
+  assert p.eval(context) == 3
+  assert context.slots['b'] == 3
+
+  context = Context()
+  tokens = tokenize('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]')
+  p = parser.parse(expr_sequence, tokens)
+  p.eval(context)
+  assert context.slots['a'] == 6
+  assert 'b' not in context.slots
+  assert 'c' in context.slots
+  assert context.slots['d'] == 8
+
+  print 'OK contexts'
+
+
 def tests():
   test_tokenize()
   test_parse()
   test_assignment()
+  test_expr_sequence()
+  test_contexts()
