@@ -22,6 +22,29 @@ import parser
 #   you can do more interesting things too. To be experimented with...
 #
 
+class Error:
+  pass
+
+class UnknownVariableError(Error):
+  def __init__(self, context, varname):
+    self.context = context
+    self.varname = varname
+  
+  def stacktrace(self):
+    s = ''
+    context = self.context
+    while context:
+      s += '   ' + str(self.context) + '\n'
+      context = context.parent
+
+    return s
+
+  def __repr__(self):
+    return 'Unknown variable %s.\nStacktrace:\n%s\n' % (
+        self.varname,
+        self.stacktrace())
+
+
 class Context(object):
   """Evaluation contexts attach values to variables."""
 
@@ -46,13 +69,13 @@ class Context(object):
     except KeyError:
       if self.parent:
         return self.parent.get_slot_rhs(name)
-      raise
+      raise UnknownVariableError(self, name)
 
   def get_slot_lhs(self, name):
     return self.Slot(self, name)
 
   def __str__(self):
-    s = 'Context[' + ', '.join(str((s,v)) for s,v in self.slots.iteritems()) + ']'
+    s = 'Context{' + ', '.join('%s:%s' % item for item in self.slots.iteritems()) + '}'
     return s
 
 

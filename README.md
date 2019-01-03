@@ -12,21 +12,23 @@ expressions with operator precendence, like this:
 
 (the answer is 12).
 
-It's is one of those problems every child should solve at some point, but I
-never cracked it as a kid. My solutions never could handle all expressions in their
+It's one of those problems most programming fans solve early on in their
+livesi, but my solutions as a youth never could handle all expressions in their
 generality correctly (depending on my attempt, parentheses would be hard to handle,
-or it'd get tripped up by operator precedence, or whatever).
+or it'd get tripped up by operator precedence, or I'd face some infinite
+recursion).
 
-Now I'm an adult, on a week-long vacation, with some time on my hands (or rather,
-desperately in need for some time to myself). So I'm tackling this problem again.
+Now I'm an adult, on a family vacation, with some time on my hands (or rather,
+desperately in need for some time to myself). So I'm tackling this problem again after 
+25 years.
 
-Except I ended up writing the college version of this.
+It kind of got out of hand.
 
 ## Features
 
-* A full parser that can handle context-free grammars defined as python
-    expressions. The production rules for this language are written in python. They look
-    like this:
+* A context-free grammar parser (basically, YACC + Lex in 110 lines of Python). What's nice about this
+  particular parser is that the production can themselves be written in Python. Here is a snippet from 
+  the code:
 
   ```python
   expr.rules = (
@@ -50,13 +52,15 @@ Except I ended up writing the college version of this.
 
 * Support for variables, like so:
   ```
-  a = 2 * 3,  b = a + 2
+    a = 2 * 3
+    b = a + 2
   ```
 
   This evaluates to 8, as you'd expect.
 
-* Support for closures and functions. Um. This project got out of hand, and I
-    wanted to experiment with this:
+* Support for closures and functions. This is where the project got out of hand. I was
+  having so much fun writing this that I ended up implementing more features,
+  like this:
 
     ```
       c ~ [b = a + 2     2*b]
@@ -65,9 +69,9 @@ Except I ended up writing the college version of this.
 
     The ~ notation assigns the parse tree of the rhs to the lhs. The rhs gets parsed, but not evaluated. Then wherever the lhs appears, the parse tree is evaluated in that context. The `[...]` notation creates a new evaluation environment where variables are bound. These can nest. Scoping is dynamic.
 
-    In the above example, `c` is bound to an expression that creates a new context. That expression can't be evaluated in the top level context because it refers to the variable `a`, which is unbound. The next line creates a new context which does define a variable `a`. It can therefore evaluate the context that was bound to `c`. The context `[a=2 c]` is evaluated (its result is 8), and assigne to the variable `d`.
+    In the above example, `c` is bound to an expression that creates a new context. If we tried to evaluate that expression in the top level context, we'd get an error because it refers to the undefined variable `a`. The rhs in the next line creates a new context which does define a variable `a`. It can therefore evaluate the context that was bound to `c`. The context `[a=2 c]` is evaluated (its result is 8), and assigne to the variable `d`.
 
-* You don't need delimeters between statements. The grammar is simple enough (or maybe the parser is smart enough?) that you don't need to separate expressions with , or ;. But if you need to do so for clarity, you can. The snippet can be written like this:
+* You don't need delimeters between statements. The grammar is simple enough (or maybe the parser is smart enough) that you don't need to separate expressions with , or ;. But if you need to do so for clarity, you can. The above snippet can be written like this:
 
     ```
       c ~ [b = a + 2, 2*b],  d = [a=2, c]
@@ -96,7 +100,7 @@ There's an interactive environment. It works like this:
   >>
 ```
 
-Here's what happened in that session. There's nothing surprising in the first
+Here's what's happening in thie session: Nothing surprising in the first
 three lines. The line `func ~ a+b` defines a variable `func` that points to the
 parse tree of the expression `a+b`. The next line creates a context in which
 a=1, b=2, and evaluates `func` in that context. The final line evaluates
