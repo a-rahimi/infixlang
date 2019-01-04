@@ -229,7 +229,7 @@ def test_if():
       """)
   assert parse(infixlang.expr_sequence, tokens).eval(context) == 6
 
-
+  context = infixlang.Context()
   tokens = T("""
     r ~ [then ~ a*2, else ~ a*3, if cond]
     l0 = [a=1, cond=0, r]
@@ -238,6 +238,13 @@ def test_if():
   assert parse(infixlang.expr_sequence, tokens).eval(context) == 2
   assert context.slots['l0'] == 3
   assert context.slots['l1'] == 2
+
+  context = infixlang.Context()
+  tokens = T("""
+    factorial ~ [then ~ i*[i=i-1 factorial] else=1, if i]
+    [i=4 factorial]
+    """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 24
 
   print 'OK if'
 

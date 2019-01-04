@@ -113,6 +113,15 @@ It kind of got out of hand.
   >>
   ```
 
+  Recursion is easy now:
+
+  ```
+  >> factorial ~ [then ~ i*[i=i-1 factorial] else=1, if i]
+  ...
+  >> [i=4 factorial]
+  24
+  ```
+
 # The Repl
 
 There's an interactive environment. It works like this:
