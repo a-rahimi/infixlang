@@ -84,6 +84,35 @@ It kind of got out of hand.
 
 * Error reporting. There's some. On my next vacation, maybe I'll leverage Python's exception system to generate nicer error reports.
 
+* Conditional statements use the context heavily to avoid cluttering the grammar
+  and the semantics of the language. The `if <condition>` operator evaluates the condition.
+  If it's nonzero, then the statement evaluates and returns a variable in
+  the context named `then`. If the condition is zero, instead
+  variable in the context named `else` is evaluated and return. If there is no `else`
+  variable in the context, `if` evaluates to `cond`. Here are some examples:
+
+  ```
+  >> a = 2
+  2
+  >> then = 4
+  4
+  >> if a==2
+  4
+  >>
+  ```
+
+  A slightly more sophicicated one:
+
+  ```
+  >> r ~ [then ~ a*2, else ~ a*3, if cond]
+  @[[ [[then ~ [a * 2]] , [[else ~ [a * 3]] , [if cond]]] ]]
+  >> [a=1, cond=1, r]
+  2
+  >> [a=1, cond=0, r]
+  3
+  >>
+  ```
+
 # The Repl
 
 There's an interactive environment. It works like this:

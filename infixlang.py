@@ -62,7 +62,7 @@ class Context(object):
     return value
  
   def stacktrace(self):
-    return '   ' + str(self.context) + '\n' + (
+    return '   ' + str(self) + '\n' + (
         self.parent.stacktrace() if self.parent else '')
 
   def __str__(self):
@@ -81,6 +81,17 @@ class expr(parser.Rule):
 
   def eval_rhs(self, context):
     return self.eval(context)
+
+class expr_if(expr):
+  def eval(self, context):
+    truth = self.val[1].eval(context)
+    if truth:
+      return variable('then').eval(context)
+    else:
+      try:
+        return variable('else').eval(context)
+      except UnknownVariableError:
+        return truth
 
 class expr_reference(expr):
   def __repr__(self):
@@ -108,20 +119,24 @@ class expr_link(expr):
     rhs_ref = expr_reference(self.val[2])
     return context.set_slot(lhs_varname, rhs_ref)
 
-class expr_plusminus(expr):
+class expr_equality(expr):
   def eval(self, context):
     op = {
       '+': int.__add__,
       '-': int.__sub__,
       '*': int.__mul__,
-      '/': int.__div__
+      '/': int.__div__,
+      '==': lambda x,y: not int.__cmp__(x,y),
     }[self.val[1].val]
 
     # in non-assignment contexts, both operators are evaluated a rhs
     return op(self.val[0].eval_rhs(context),
               self.val[2].eval_rhs(context))
 
-class expr_muldiv(expr_plusminus):
+class expr_plusminus(expr_equality):
+  pass
+
+class expr_muldiv(expr_equality):
   pass
 
 class context_definition(expr):
@@ -201,6 +216,9 @@ class op_link(parser.LiteralToken):
 class op_plusminus(parser.LiteralToken):
   tokens = {'-', '+'}
 
+class op_equality(parser.LiteralToken):
+  tokens = {'=='}
+
 class op_muldiv(parser.LiteralToken):
   tokens = {'*', '/'}
 
@@ -219,14 +237,18 @@ class open_paren(parser.LiteralToken):
 class close_paren(parser.LiteralToken):
   tokens = {')'}
 
+class op_if(parser.LiteralToken):
+  tokens = {'if'}
 
 def tokenize(string):
   return parser.tokenize(string, [
     integer,
-    op_assignment,
-    op_link,
+    op_equality,
     op_plusminus,
     op_muldiv,
+    op_assignment,
+    op_link,
+    op_if,
     open_paren,
     close_paren,
     open_square_bracket,
@@ -246,7 +268,12 @@ expr_sequence.rules = (
 expr.rules = (
     expr_assignment,
     expr_link,
-    expr_plusminus,
+    expr_equality,
+    expr_if,
+    )
+
+expr_if.rules = (
+    [op_if, expr],
     )
 
 expr_assignment.rules = (
@@ -255,6 +282,11 @@ expr_assignment.rules = (
 
 expr_link.rules = (
     [variable, op_link, expr],
+    )
+
+expr_equality.rules = (
+    [expr_plusminus, op_equality, expr_equality],
+    expr_plusminus
     )
 
 expr_plusminus.rules = (

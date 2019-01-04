@@ -37,6 +37,7 @@ def test_tokenize():
         stringified,
         expected))
 
+  check('2+3 == 5')
   check('2+3*4')
   check('2 *  3 +4')
   check('(2 +3)*4')
@@ -60,6 +61,8 @@ def test_parse():
   check('2 *  3 +4', 10)
   check('(2+3)*4', 20)
   check('(2+3)*0', 0)
+  check('(2+3) == 5', 1)
+  check('(2+3) == 4', 0)
 
   print 'OK parse'
 
@@ -179,3 +182,62 @@ def test_contexts():
   assert context.slots['d'] == 8
 
   print 'OK contexts'
+
+
+def test_if():
+  context = infixlang.Context()
+  tokens = T("""
+      else = 4
+      then = 2
+      if 0
+      """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 4
+
+  context = infixlang.Context()
+  tokens = T("""
+      else ~ 2 * a
+      then ~ 3 * a
+      a = 2
+      if 0
+      """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 4
+
+  context = infixlang.Context()
+  tokens = T("""
+      a = 1
+      else ~ 2 * a
+      then ~ 3 * a
+      a = 2
+      if 1
+      """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 6
+
+  context = infixlang.Context()
+  tokens = T("""
+      a = 1
+      else ~ [b = 2, b * a]
+      then ~ [b = 3, b * a]
+      a = 2
+      if 1
+      """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 6
+
+  context = infixlang.Context()
+  tokens = T("""
+      a = 2
+      else ~ 2*a  then ~ 3*a  if  a == 2
+      """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 6
+
+
+  tokens = T("""
+    r ~ [then ~ a*2, else ~ a*3, if cond]
+    l0 = [a=1, cond=0, r]
+    l1 = [a=1, cond=1, r]
+    """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 2
+  assert context.slots['l0'] == 3
+  assert context.slots['l1'] == 2
+
+  print 'OK if'
+
