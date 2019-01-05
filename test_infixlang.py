@@ -27,6 +27,23 @@ def parse(production_rule_root, stream):
 
   return p
 
+def test_variable_context():
+  context = infixlang.Context()
+  tokens = T("""
+    con = [a=1, b=2, this]
+    [c=3, con, a+c]
+    """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 4
+
+  context = infixlang.Context()
+  tokens = T("""
+    enumerate ~ [then~[i=i-1, enumerate], else~this, if i]
+    [i=4 enumerate]
+    """)
+  assert parse(infixlang.expr_sequence, tokens).eval(context) == 4
+
+
+  print 'OK variable context'
 
 def test_tokenize():
   def check(string):

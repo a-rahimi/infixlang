@@ -50,6 +50,11 @@ class Context(object):
     if not isinstance(name, str):
       raise ValueError('"%s" is not a string' % name)
 
+    if name == 'this':
+      new_context = Context()
+      new_context.slots.update(self.slots)
+      return expr_reference(expr_context(new_context))
+
     try:
       return self.slots[name]
     except KeyError:
@@ -96,6 +101,14 @@ class expr_if(expr):
 class expr_reference(expr):
   def __repr__(self):
     return "@" + str(self.val)
+
+class expr_context(expr):
+  def __repr__(self):
+    return str(self.val)
+
+  def eval(self, context):
+    context.slots.update(self.val.slots)
+    return expr_reference(self)
 
 class expr_sequence(expr):
   def eval(self, context):
