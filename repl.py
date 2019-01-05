@@ -12,12 +12,12 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
   while True:
     try:
       ln = istream.readline() if istream else raw_input('>> ')
-      if not ln:
+      if istream and not ln:
         raise EOFError
     except EOFError:
       break
 
-    if ln.isspace():
+    if not ln or ln.isspace():
       # ignore blank lines. they're not in the language grammar
       continue 
 
