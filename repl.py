@@ -41,7 +41,7 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
 
     # evaluate the line in the global context
     try:
-      result = parse_tree.eval(global_context)
+      result, global_context = parse_tree.eval(global_context)
     except infixlang.Error as e:
       print >>estream, e
       continue

@@ -46,14 +46,24 @@ class Context(object):
     self.slots = {}
     self.parent = parent
 
+  def deepcopy(self):
+    parent = self.parent.deepcopy() if self.parent else None
+    new_context = self.__class__(parent)
+    new_context.slots.update(self.slots)
+    return new_context
+
+  def set_ancestor(self, parent):
+    if self.parent:
+      self.parent.set_ancestor(parent)
+    else:
+      self.parent = parent
+
   def get_slot_rhs(self, name):
     if not isinstance(name, str):
       raise ValueError('"%s" is not a string' % name)
 
     if name == 'this':
-      new_context = Context()
-      new_context.slots.update(self.slots)
-      return expr_reference(expr_context(new_context))
+      return expr_reference(expr_context(self.deepcopy()))
 
     try:
       return self.slots[name]
@@ -89,14 +99,14 @@ class expr(parser.Rule):
 
 class expr_if(expr):
   def eval(self, context):
-    truth = self.val[1].eval(context)
+    truth, context = self.val[1].eval(context)
     if truth:
       return variable('then').eval(context)
     else:
       try:
         return variable('else').eval(context)
       except UnknownVariableError:
-        return truth
+        return truth, context
 
 class expr_reference(expr):
   def __repr__(self):
@@ -104,33 +114,34 @@ class expr_reference(expr):
 
 class expr_context(expr):
   def __repr__(self):
-    return str(self.val)
+    return self.val.stacktrace()
 
   def eval(self, context):
-    context.slots.update(self.val.slots)
-    return expr_reference(self)
+    new_context = self.val.deepcopy()
+    new_context.set_ancestor(context)
+    return expr_reference(self), new_context
 
 class expr_sequence(expr):
   def eval(self, context):
     # the value of a sequence is the value of its last element. all preceding
     # elements are evaluated for their side-effect only.
-    self.val[0].eval(context)
+    _, context = self.val[0].eval(context)
     # the second term is either at index 2 if there's an intervening comma,
     # or at index 1 if there's no comma
     return self.val[-1].eval(context)
 
 class expr_assignment(expr):
   def eval(self, context):
-    lhs_varname = self.val[0].eval_lhs(context)
-    rhs = self.val[2].eval_rhs(context)
-    return context.set_slot(lhs_varname, rhs)
+    lhs_varname, context = self.val[0].eval_lhs(context)
+    rhs, context = self.val[2].eval_rhs(context)
+    return context.set_slot(lhs_varname, rhs), context
 
 class expr_link(expr):
   def eval(self, context):
     # in the context of a link, the rhs isn't evaluated at all.
-    lhs_varname = self.val[0].eval_lhs(context)
+    lhs_varname, context = self.val[0].eval_lhs(context)
     rhs_ref = expr_reference(self.val[2])
-    return context.set_slot(lhs_varname, rhs_ref)
+    return context.set_slot(lhs_varname, rhs_ref), context
 
 class expr_equality(expr):
   def eval(self, context):
@@ -143,8 +154,9 @@ class expr_equality(expr):
     }[self.val[1].val]
 
     # in non-assignment contexts, both operators are evaluated a rhs
-    return op(self.val[0].eval_rhs(context),
-              self.val[2].eval_rhs(context))
+    arg1, context = self.val[0].eval_rhs(context)
+    arg2, context = self.val[2].eval_rhs(context)
+    return op(arg1, arg2), context
 
 class expr_plusminus(expr_equality):
   pass
@@ -156,8 +168,8 @@ class context_definition(expr):
   def eval(self, context):
     assert isinstance(self.val[0], open_square_bracket)
     assert isinstance(self.val[-1], close_square_bracket)
-    new_context = Context(parent=context)
-    return self.val[1].eval(new_context)
+    v, _ = self.val[1].eval(Context(parent=context))
+    return v, context
 
 class expr_highest_precedence(expr):
   def eval(self, context):
@@ -172,7 +184,7 @@ class expr_highest_precedence(expr):
 
 class Value(parser.Terminal):
   def eval(self, context):
-    return self.val
+    return self.val, context
 
   def eval_lhs(self, context):
     return self.eval(context)
@@ -208,13 +220,13 @@ class variable(Value):
     return (cls(w) if w else None), string
 
   def eval_lhs(self, context):
-    return self.val
+    return self.val, context
 
   def eval_rhs(self, context):
     v = context.get_slot_rhs(self.val)
     if isinstance(v, expr_reference):
       return v.val.eval(context)
-    return v
+    return v, context
 
   def eval(self, context):
     return self.eval_rhs(context)
