@@ -124,7 +124,7 @@ def test_expr_sequence_3():
 
 def test_contexts_1():
   context = parse(infixlang.expr_sequence, 
-            T('a = 2* 3, c = [b = a + 2, 2*b]')).eval(C())
+            T('a = 2* 3, c = (b = a + 2, 2*b)')).eval(C())
   assert context.val == 16
   assert context['a'] == 6
   assert 'b' not in context
@@ -132,7 +132,7 @@ def test_contexts_1():
 
 def test_contexts_2():
   context = parse(infixlang.expr_sequence,
-            T('a = 2* 3 c = [b = a + 2, 2*b]')).eval(C())
+            T('a = 2* 3 c = (b = a + 2, 2*b)')).eval(C())
   assert context.val == 16
   assert context['a'] == 6
   assert 'b' not in context
@@ -140,7 +140,7 @@ def test_contexts_2():
 
 def test_contexts_3():
   context = parse(infixlang.expr_sequence,
-            T('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')).eval(C())
+            T('a = 2* 3, d = (aa=2, (b = aa + 2, 2*b))')).eval(C())
   assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
@@ -148,7 +148,7 @@ def test_contexts_3():
 
 def test_contexts_4():
   context = parse(infixlang.expr_sequence,
-            T('a = 2* 3  d = [aa=2  [b = aa + 2 2*b]]')).eval(C())
+            T('a = 2* 3  d = (aa=2  (b = aa + 2 2*b))')).eval(C())
   assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
@@ -156,19 +156,19 @@ def test_contexts_4():
 
 def test_contexts_5():
   context = parse(infixlang.expr_sequence,
-            T('a = [2], b = [a]')).eval(C())
+            T('a = (2), b = (a)')).eval(C())
   assert context.val == 2
   assert context['b'] == 2
 
 def test_contexts_6():
   context = parse(infixlang.expr_sequence,
-            T('a ~ [3], b = [a]')).eval(C())
+            T('a ~ (3), b = (a)')).eval(C())
   assert context.val == 3
   assert context['b'] == 3
 
 def test_contexts_7():
   context = parse(infixlang.expr_sequence, 
-            T('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]')
+            T('a = 2* 3, c ~ (b = aa + 2, 2*b), d = (aa=2, c)')
            ).eval(C())
   assert context.val == 8
   assert context['a'] == 6
@@ -179,8 +179,8 @@ def test_contexts_7():
 def test_contexts_8():
   tokens = T("""
       a = 2 * 3
-      c ~ [b = aa + 2     2*b]
-      d = [aa=2 c]""")
+      c ~ (b = aa + 2     2*b)
+      d = (aa=2 c)""")
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 8
   assert context['a'] == 6
@@ -222,8 +222,8 @@ def test_if_3():
 def test_if_4():
   tokens = T("""
       a = 1
-      else ~ [b = 2, b * a]
-      then ~ [b = 3, b * a]
+      else ~ (b = 2, b * a)
+      then ~ (b = 3, b * a)
       a = 2
       if 1
       """)
@@ -240,9 +240,9 @@ def test_if_5():
 
 def test_if_6():
   tokens = T("""
-    r ~ [then ~ a*2, else ~ a*3, if cond]
-    l0 = [a=1, cond=0, r]
-    l1 = [a=1, cond=1, r]
+    r ~ (then ~ a*2, else ~ a*3, if cond)
+    l0 = (a=1, cond=0, r)
+    l1 = (a=1, cond=1, r)
     """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 2
@@ -252,16 +252,16 @@ def test_if_6():
 
 def test_variable_context_1():
   tokens = T("""
-    con = [a=1, b=2, this]
-    [c=3, con, a+c]
+    con = (a=1, b=2, this)
+    (c=3, con, a+c)
     """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 4
 
 def test_variable_context_2():
   tokens = T("""
-    con = [a=1, [b=2, this]]
-    [c=3, con, a+b+c]
+    con = (a=1, (b=2, this))
+    (c=3, con, a+b+c)
     """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 6
@@ -269,8 +269,8 @@ def test_variable_context_2():
 
 def test_factorial():
   tokens = T("""
-    factorial ~ [then ~ i*[i=i-1 factorial] else=1, if i]
-    [i=4 factorial]
+    factorial ~ (then ~ i*(i=i-1 factorial) else=1, if i)
+    (i=4 factorial)
     """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 24
@@ -278,8 +278,8 @@ def test_factorial():
 
 def test_accumulate():
   tokens = T("""
-    accumulate ~ [tally=tally+func, then~[i=i-1 accumulate], else~tally, if i]
-    [tally=0 i=4 func~i*i accumulate]
+    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, if i)
+    (tally=0 i=4 func~i*i accumulate)
     """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 30

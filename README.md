@@ -31,9 +31,9 @@ It kind of got out of hand.
 
 ## Features
 
-* A context-free grammar parser (basically, YACC + Lex in 110 lines of Python). What's nice about this
-  particular parser is that the production can themselves be written in Python. Here is a snippet from 
-  the code:
+* A simple simple recursive descent context-free grammar parser (basically, YACC + Lex in 110 lines of Python).
+  What's nice about this particular parser is that the production can themselves be written in Python. Here 
+  is a snippet from the code:
 
   ```python
   expr.rules = (
@@ -68,66 +68,57 @@ It kind of got out of hand.
   like this:
 
     ```
-      c ~ [b = a + 2     2*b]
-      d = [a=2 c]
+      c ~ (b = a + 2,  2*b)
+      d = (a=2 c)
     ```
 
-    The ~ notation assigns the parse tree of the rhs to the lhs. The rhs gets parsed, but not evaluated. Then wherever the lhs appears, the parse tree is evaluated in that context. The `[...]` notation creates a new evaluation environment where variables are bound. These can nest. Scoping is dynamic.
+    The ~ notation assigns the parse tree of the rhs to the lhs. The rhs gets parsed, but not evaluated. Then wherever the lhs appears, the parse tree is evaluated in that context. Scoping is dynamic (see the formal language definition below).
 
-    In the above example, `c` is bound to an expression that creates a new context. If we tried to evaluate that expression in the top level context, we'd get an error because it refers to the undefined variable `a`. The rhs in the next line creates a new context which does define a variable `a`. It can therefore evaluate the context that was bound to `c`. The context `[a=2 c]` is evaluated (its result is 8), and assigne to the variable `d`.
+    In the above example, `c` is bound to the parse tree of the expression "b=a+2, 2*b". If we tried to evaluate that expression in the top level context, we'd get an error because it refers to the undefined variable `a`. The rhs in the next line defines the variable `a`, so `c` gets evaluated successfully in that context.
 
-* You don't need delimeters between statements. The grammar is simple enough (or maybe the parser is smart enough) that you don't need to separate expressions with , or ;. But if you need to do so for clarity, you can. The above snippet can be written like this:
+* You don't need delimeters between statements. The grammar is simple enough (or maybe the parser is smart enough) that you don't need to separate expressions with , or ;.  If you want to do so for clarity, you can. The above snippet can be written like this:
 
     ```
-      c ~ [b = a + 2, 2*b],  d = [a=2, c]
+      c ~ (b=a+2  2*b),  d = (a=2  c)
     ```
 
-* Error reporting. There's some. On my next vacation, maybe I'll leverage Python's exception system to generate nicer error reports.
+* Error reporting. There's some.
 
 * Conditional statements use the context heavily to avoid cluttering the grammar
   and the semantics of the language. The `if <condition>` operator evaluates the condition.
-  If it's nonzero, then the statement evaluates and returns a variable in
-  the context named `then`. If the condition is zero, instead
-  variable in the context named `else` is evaluated and return. If there is no `else`
+  If it's nonzero, then the statement evaluates and returns a variable 
+  named `then` in the current context. If the condition is zero, a
+  variable named `else` is evaluated and returned. If there is no `else`
   variable in the context, `if` evaluates to `cond`. Here are some examples:
 
+  This evaluates to 4:
   ```
-  >> a = 2
-  2
-  >> then = 4
-  4
-  >> if a==2
-  4
-  >>
+    a=2, then=4 if a==2
   ```
 
-  A slightly more sophisticated one:
+  A slightly more sophisticated example:
 
   ```
-  >> r ~ [then ~ a*2, else ~ a*3, if cond]
-  ...
-  >> [a=1, cond=1, r]
-  2
-  >> [a=1, cond=0, r]
-  3
-  >>
+    r ~ (then ~ a*2, else ~ a*3, if cond)
+    (a=1, cond=1, r)
   ```
+
+  This evaluates to 2, and `[a=1, cond=0, r]` evaluates to 3.
 
   Recursion is easy now:
 
   ```
-  >> factorial ~ [then ~ i*[i=i-1 factorial] else=1, if i]
-  ...
-  >> [i=4 factorial]
-  24
+    factorial ~ (then~i*(i=i-1 factorial) else=1 if i)
+    (i=4 factorial)
   ```
+  This returns 24.
 
   Here's a function that accumulates i<sup>2</sup> up to some i, and returns 30
   for i=4:
 
   ```
-    accumulate ~ [tally=tally+func, then~[i=i-1 accumulate], else~tally, if i]
-    [tally=0 i=4 func~i*i accumulate]
+    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, if i)
+    (tally=0 i=4 func~i*i accumulate)
   ```
 
 
@@ -145,7 +136,7 @@ There's an interactive environment. It works like this:
   25
   >> func ~ a+b
   @[a + b]
-  >> [a=1, b=2, func]
+  >> (a=1, b=2, func)
   3
   >> func
   25
@@ -181,50 +172,56 @@ Here's the first rule:
 Assigning a variable name inside a context endows it with a value for it there:
 
 ```
- value(c: varname = val) -> value(c: val)
-                         -> value(c: varname) = value(c: val)
+ value(c: varname = val) → value(c: val)
+                         → value(c: varname) = value(c: val)
 ```
 
 The ~ operator is like the = operator, except it doesn't evaluate the val:
 
 ```
- value(c: varname ~ expr) -> expr
-                          -> value(c: varname) = expr
+ value(c: varname ~ expr) → expr
+                          → value(c: varname) = expr
 ```
 
 Contexts distribute over most binary operations:
 
 ```
- value(c: e1 op e2) -> value(c: e1) op value(c: e2)
+ value(c: e1 op e2) → value(c: e1) op value(c: e2)
+```
+
+The "if" statements works like this:
+
+```
+ value(c: if e) → value(c: "then") if e else value(c: "else")
 ```
 
 Sequences of expressions evaluate to their last element. They're the only way to create
 a new context:
 
 ```
- value(c: en, ..., e2, e1) -> value(c1: e1)
-                           -> parent(c1) = c2
+ value(c: en, ..., e2, e1) → value(c1: e1)
+                           → parent(c1) = c2
 ```
 
 There is a special variable name in every context named "this". It returns the
 context where "this" is being evaluated::
 
 ```
- value(c: this) -> c
+ value(c: this) → c
 ```
 
 Evaluating a context inside another context causes subsequent expressions to
 inherit from the context.
 
 ```
- value(c: ..., context, e1) -> parent(c1) = c
-                               ancestor(c) = parent(context)
-                               value(c: expr) = value(context: expr)
+ value(c: ..., context, e1) → parent(c1) = c
+                              ancestor(c) = parent(context)
+                              value(c: expr) = value(context: expr)
 ```
 
 where ancestor(c) denotes the top of the parent hierarchy of c:
 
 ```
- ancestor(c) -> ancestor(parent(c)) if parent(c) else c
+ ancestor(c) → ancestor(parent(c)) if parent(c) else c
 ```
 

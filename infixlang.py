@@ -64,12 +64,15 @@ class Context(object):
       raise ValueError('"%s" is not a string' % name)
 
     if name == 'this':
-      return expr_reference(expr_context(self.deepcopy()))
+      return expr_reference(expr_this(self.deepcopy()))
 
     try:
       return self.slots[name]
     except KeyError:
       if self.parent:
+        # clean up the context hierarchy while looking up things.
+        if not self.parent.slots:
+          self.parent = self.parent.parent
         return self.parent[name]
       raise UnknownVariableError(self, name)
 
@@ -117,7 +120,7 @@ class expr_reference(expr):
   def __repr__(self):
     return "@" + str(self.val)
 
-class expr_context(expr):
+class expr_this(expr):
   def __repr__(self):
     return self.val.stacktrace()
 
@@ -167,21 +170,15 @@ class expr_plusminus(expr_equality):
 class expr_muldiv(expr_equality):
   pass
 
-class context_definition(expr):
+class parenthesized_expr(expr):
   def eval(self, context):
-    assert isinstance(self.val[0], open_square_bracket)
-    assert isinstance(self.val[-1], close_square_bracket)
     val = self.val[1].eval(Context(parent=context)).val
     return Context(parent=context, val=val)
 
 class expr_highest_precedence(expr):
-  def eval(self, context):
-    if isinstance(self.val, integer):
-      return self.val.eval(context)
-    if isinstance(self.val[0], open_paren):
-      # a parenthesized expression. return the expression inside
-      return self.val[1].eval(context)
- 
+  pass
+
+
 
 # ----- The terminal tokens
 
@@ -250,12 +247,6 @@ class op_muldiv(parser.LiteralToken):
 class comma(parser.LiteralToken):
   tokens = {','}
 
-class open_square_bracket(parser.LiteralToken):
-  tokens = {'['}
-
-class close_square_bracket(parser.LiteralToken):
-  tokens = {']'}
-
 class open_paren(parser.LiteralToken):
   tokens = {'('}
 
@@ -276,8 +267,6 @@ def tokenize(string):
     op_if,
     open_paren,
     close_paren,
-    open_square_bracket,
-    close_square_bracket,
     comma,
     variable])
 
@@ -323,13 +312,12 @@ expr_muldiv.rules = (
     [expr_highest_precedence, op_muldiv, expr_muldiv],
     expr_highest_precedence)
 
-context_definition.rules = (
-    [open_square_bracket, expr_sequence, close_square_bracket], 
+parenthesized_expr.rules = (
+    [open_paren, expr_sequence, close_paren],
     )
 
 expr_highest_precedence.rules = (
+    parenthesized_expr,
     integer,
     variable,
-    [open_paren, expr, close_paren],
-    context_definition,
     )
