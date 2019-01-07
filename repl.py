@@ -46,6 +46,8 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
       print >>estream, e
       continue
 
+    global_context = global_context.collapse()
+
     print >>ostream, global_context.val
 
 if __name__ == '__main__':

@@ -1,8 +1,5 @@
 # Infix arithmetic
 
-You shouldn't use any of the code from this. You'll also probably not learn
-anything good from it.
-
 When I was in high school, I tried to write code to parse and evaluate infix
 expressions with operator precedence, like this:
 
@@ -82,6 +79,25 @@ It kind of got out of hand.
       c ~ (b=a+2  2*b),  d = (a=2  c)
     ```
 
+* The special variable "this" returns the currenct context. When you evaluate a context elsewhere, it updates the current context with the context of the context you're evaluating. For example:
+
+    ```
+      >> con = (a=1, this)
+      ...
+      >>> a
+      Unknown variable a.
+      >> (con a+1)
+      2
+    ```
+
+  You get structs for free using this construct:
+  ```
+   >> mystruct = (a=1, b=2, c=3, this)
+   ...
+   >> (mystruct b)
+   2
+  ```
+
 * Error reporting. There's some.
 
 * Conditional statements use the context heavily to avoid cluttering the grammar
@@ -99,11 +115,11 @@ It kind of got out of hand.
   A slightly more sophisticated example:
 
   ```
-    r ~ (then ~ a*2, else ~ a*3, if cond)
+    r ~ (then=a*2, else=a*3, if cond)
     (a=1, cond=1, r)
   ```
 
-  This evaluates to 2, and `[a=1, cond=0, r]` evaluates to 3.
+  This evaluates to 2, and `(a=1, cond=0, r)` evaluates to 3.
 
   Recursion is easy now:
 
@@ -120,7 +136,6 @@ It kind of got out of hand.
     accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, if i)
     (tally=0 i=4 func~i*i accumulate)
   ```
-
 
 # The Repl
 
@@ -150,78 +165,67 @@ a=1, b=2, and evaluates `func` in that context. The final line evaluates
 `func` in the global context where a=23, b=2.
 
 
-# Formal Language Definition
+# Formal Language Semantics
 
-A note about the notation:
+Contexts form a hierarchy for looking up variables. A context has two attributes: a parent and a value. 
 
-A context has two attributes: a parent and a value. 
+value(c: expr) is the value of an expression in a context c. So for example, value(c:a + b) is the value of
+a+b in c.  
 
-value(c: expr) is the value of an expression in a context c. So for example, value(c: varname) is the value 
-of a variable named "varname" in context c, and value(c:a + b) is the value of
-a+b in c.
+parent(c) is just the parent of c.
 
-parent(c) is just the parent of c. Contexts form a hierarchy for looking up
-variables.
 
-Here's the first rule:
+Here's the first rule. If a variable name isn't in a context, it'looked up
+in the context's parent:
 
 ```
- value(c: varname) = value(parent(c): varname)
+ value(c: varname) = value(parent(c): varname) if varname ∉ c
 ```
 
 Assigning a variable name inside a context endows it with a value for it there:
 
 ```
- value(c: varname = val) → value(c: val)
-                         → value(c: varname) = value(c: val)
+ (c: varname = e) → value(c: varname) = value(c: e)
 ```
 
 The ~ operator is like the = operator, except it doesn't evaluate the val:
 
 ```
- value(c: varname ~ expr) → expr
-                          → value(c: varname) = expr
+ (c: varname ~ e) → value(c: varname) = e
 ```
 
-Contexts distribute over most binary operations:
+Contexts distribute over arithmetic operations (op can be -+/*):
 
 ```
- value(c: e1 op e2) → value(c: e1) op value(c: e2)
+ value(c: e1 op e2) = value(c: e1) op value(c: e2)
 ```
 
 The "if" statements works like this:
 
 ```
- value(c: if e) → value(c: "then") if e else value(c: "else")
+ value(c: if e) = value(c: then) if e else value(c: else)
 ```
 
-Sequences of expressions evaluate to their last element. They're the only way to create
-a new context:
+Sequences of expressions evaluate to their last element. A chain of contexts is
+created for the element in the expression:
 
 ```
- value(c: en, ..., e2, e1) → value(c1: e1)
-                           → parent(c1) = c2
+ value(c: e1, e2, ...) = value(c1: e2, ...)
+                       → parent(c1) = c
+                       → c: e1
 ```
-
-There is a special variable name in every context named "this". It returns the
-context where "this" is being evaluated::
+There is a special variable named "this". It returns the
+context where "this" is being evaluated:
 
 ```
- value(c: this) → c
+ value(c: this) = c
 ```
 
 Evaluating a context inside another context causes subsequent expressions to
 inherit from the context.
 
 ```
- value(c: ..., context, e1) → parent(c1) = c
-                              ancestor(c) = parent(context)
-                              value(c: expr) = value(context: expr)
+ value(c: context, e1, ...) = value(chain(c, context): e1, ...)
 ```
-
-where ancestor(c) denotes the top of the parent hierarchy of c:
-
-```
- ancestor(c) → ancestor(parent(c)) if parent(c) else c
-```
-
+where chain(c1, c2) returns a new context where c1 is the parent of the root
+of c2.

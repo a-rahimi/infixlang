@@ -49,9 +49,19 @@ class Context(object):
 
   def deepcopy(self):
     parent = self.parent.deepcopy() if self.parent else None
-    new_context = self.__class__(parent)
+    new_context = self.__class__(parent=parent, val=self.val)
     new_context.slots.update(self.slots)
     return new_context
+
+  def dictify(self):
+    slots = self.parent.dictify() if self.parent else {}
+    slots.update(self.slots)
+    return slots
+
+  def collapse(self):
+    c = Context(parent=None, val=self.val)
+    c.slots = self.dictify()
+    return c
 
   def set_ancestor(self, parent):
     if self.parent:
@@ -89,8 +99,9 @@ class Context(object):
         self.parent.stacktrace() if self.parent else '')
 
   def __str__(self):
-    return 'Context{' + ', '.join(
-        '%s:%s' % item for item in self.slots.iteritems()) + '}'
+    return 'Context(%s){%s}' %( 
+        self.val,
+        ', '.join('%s:%s' % item for item in self.slots.iteritems()))
 
 
 # ----- Objects in the parse tree.
