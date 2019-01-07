@@ -59,7 +59,7 @@ class Context(object):
     else:
       self.parent = parent
 
-  def get_slot(self, name):
+  def __getitem__(self, name):
     if not isinstance(name, str):
       raise ValueError('"%s" is not a string' % name)
 
@@ -70,26 +70,20 @@ class Context(object):
       return self.slots[name]
     except KeyError:
       if self.parent:
-        return self.parent.get_slot(name)
+        return self.parent[name]
       raise UnknownVariableError(self, name)
 
-  def set_slot(self, name, value):
+  def __setitem__(self, name, value):
     self.slots[name] = value
     return value
  
-  def stacktrace(self):
-    return '   ' + str(self) + '\n' + (
-        self.parent.stacktrace() if self.parent else '')
-
-  def __getitem__(self, name):
-    return self.get_slot(name)
-
-  def __setitem__(self, name, value):
-    return self.set_slot(name, value)
-
   def __contains__(self, name):
     return name in self.slots or (
         name in self.parent if self.parent else False)
+
+  def stacktrace(self):
+    return '   ' + str(self) + '\n' + (
+        self.parent.stacktrace() if self.parent else '')
 
   def __str__(self):
     return 'Context{' + ', '.join(
@@ -135,25 +129,21 @@ class expr_context(expr):
 
 class expr_sequence(expr):
   def eval(self, context):
-    # the value of a sequence is the value of its last element. all preceding
-    # elements are evaluated for their side-effect only.
-    context = self.val[0].eval(context)
-    # the second term is either at index 2 if there's an intervening comma,
-    # or at index 1 if there's no comma
-    return self.val[-1].eval(context)
+    return self.val[-1].eval(self.val[0].eval(context))
 
 class expr_assignment(expr):
   def eval(self, context):
     lhs_context = self.val[0].eval_lhs(context)
     rhs_val = self.val[2].eval_rhs(context).val
-    context.set_slot(lhs_context.val, rhs_val)
+    context[lhs_context.val] = rhs_val
     return Context(parent=context, val=rhs_val)
 
 class expr_link(expr):
   def eval(self, context):
     # in the context of a link, the rhs isn't evaluated at all.
     lhs_context = self.val[0].eval_lhs(context)
-    context.set_slot(lhs_context.val, expr_reference(self.val[2]))
+    rhs_val = expr_reference(self.val[2])
+    context[lhs_context.val] = rhs_val
     return lhs_context
 
 class expr_equality(expr):
@@ -167,10 +157,9 @@ class expr_equality(expr):
     }[self.val[1].val]
 
     # in non-assignment contexts, both operators are evaluated a rhs
-    arg1 = self.val[0].eval_rhs(context).val
-    arg2 = self.val[2].eval_rhs(context).val
-    new_context = Context(parent=context, val=op(arg1, arg2))
-    return new_context
+    val = op(self.val[0].eval_rhs(context).val,
+              self.val[2].eval_rhs(context).val)
+    return Context(parent=context, val=val)
 
 class expr_plusminus(expr_equality):
   pass
@@ -182,8 +171,8 @@ class context_definition(expr):
   def eval(self, context):
     assert isinstance(self.val[0], open_square_bracket)
     assert isinstance(self.val[-1], close_square_bracket)
-    return Context(parent=context,
-                   val=self.val[1].eval(Context(parent=context)).val)
+    val = self.val[1].eval(Context(parent=context)).val
+    return Context(parent=context, val=val)
 
 class expr_highest_precedence(expr):
   def eval(self, context):
@@ -212,11 +201,8 @@ class integer(Value):
   def tokenize(cls, string):
     ok = False
     num = 0
-    while string:
-      try:
-        num = num * 10 + int(string[0])
-      except ValueError:
-        break
+    while string and string[0].isdigit():
+      num = num * 10 + int(string[0])
       string = string[1:]
       ok = True
 
@@ -237,7 +223,7 @@ class variable(Value):
     return Context(parent=context, val=self.val)
 
   def eval_rhs(self, context):
-    v = context.get_slot(self.val)
+    v = context[self.val]
     if isinstance(v, expr_reference):
       return v.val.eval(context)
     return Context(parent=context, val=v)

@@ -122,12 +122,14 @@ It kind of got out of hand.
   24
   ```
 
-  Here's a function that accumulates i^2 up to some i:
+  Here's a function that accumulates i<sup>2</sup> up to some i, and returns 30
+  for i=4:
 
   ```
     accumulate ~ [tally=tally+func, then~[i=i-1 accumulate], else~tally, if i]
     [tally=0 i=4 func~i*i accumulate]
   ```
+
 
 # The Repl
 
@@ -155,3 +157,74 @@ three lines. The line `func ~ a+b` defines a variable `func` that points to the
 parse tree of the expression `a+b`. The next line creates a context in which
 a=1, b=2, and evaluates `func` in that context. The final line evaluates
 `func` in the global context where a=23, b=2.
+
+
+# Formal Language Definition
+
+A note about the notation:
+
+A context has two attributes: a parent and a value. 
+
+value(c: expr) is the value of an expression in a context c. So for example, value(c: varname) is the value 
+of a variable named "varname" in context c, and value(c:a + b) is the value of
+a+b in c.
+
+parent(c) is just the parent of c. Contexts form a hierarchy for looking up
+variables.
+
+Here's the first rule:
+
+```
+ value(c: varname) = value(parent(c): varname)
+```
+
+Assigning a variable name inside a context endows it with a value for it there:
+
+```
+ value(c: varname = val) -> value(c: val)
+                         -> value(c: varname) = value(c: val)
+```
+
+The ~ operator is like the = operator, except it doesn't evaluate the val:
+
+```
+ value(c: varname ~ expr) -> expr
+                          -> value(c: varname) = expr
+```
+
+Contexts distribute over most binary operations:
+
+```
+ value(c: e1 op e2) -> value(c: e1) op value(c: e2)
+```
+
+Sequences of expressions evaluate to their last element. They're the only way to create
+a new context:
+
+```
+ value(c: en, ..., e2, e1) -> value(c1: e1)
+                           -> parent(c1) = c2
+```
+
+There is a special variable name in every context named "this". It returns the
+context where "this" is being evaluated::
+
+```
+ value(c: this) -> c
+```
+
+Evaluating a context inside another context causes subsequent expressions to
+inherit from the context.
+
+```
+ value(c: ..., context, e1) -> parent(c1) = c
+                               ancestor(c) = parent(context)
+                               value(c: expr) = value(context: expr)
+```
+
+where ancestor(c) denotes the top of the parent hierarchy of c:
+
+```
+ ancestor(c) -> ancestor(parent(c)) if parent(c) else c
+```
+
