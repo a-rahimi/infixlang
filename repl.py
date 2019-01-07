@@ -41,12 +41,12 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
 
     # evaluate the line in the global context
     try:
-      result, global_context = parse_tree.eval(global_context)
+      global_context = parse_tree.eval(global_context)
     except infixlang.Error as e:
       print >>estream, e
       continue
 
-    print >>ostream, result
+    print >>ostream, global_context.val
 
 if __name__ == '__main__':
   repl()

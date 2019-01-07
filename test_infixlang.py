@@ -7,6 +7,7 @@ import infixlang
 
 # commonly used operations throughout the tests
 T = infixlang.tokenize
+C = infixlang.Context
 
 def parse(production_rule_root, stream):
   """Parse & ensure token stream is fully consumed.
@@ -27,24 +28,6 @@ def parse(production_rule_root, stream):
 
   return p
 
-def test_variable_context():
-  context = infixlang.Context()
-  tokens = T("""
-    con = [a=1, b=2, this]
-    [c=3, con, a+c]
-    """)
-  v, context = parse(infixlang.expr_sequence, tokens).eval(context)
-
-  assert v == 4
-  context = infixlang.Context()
-  tokens = T("""
-    con = [a=1, [b=2, this]]
-    [c=3, con, a+b+c]
-    """)
-  v, context = parse(infixlang.expr_sequence, tokens).eval(context)
-  assert v == 6
-
-  print 'OK variable context'
 
 def test_tokenize():
   def check(string):
@@ -68,7 +51,7 @@ def test_tokenize():
 def test_parse():
   def check(string, expected_value):
     parse_tree = parse(infixlang.expr, T(string))
-    computed_value, _ = parse_tree.eval(infixlang.Context())
+    computed_value = parse_tree.eval(C()).val
     if computed_value != expected_value:
       raise ValueError('Got %s expected %s for %s' % (
         computed_value,
@@ -86,14 +69,14 @@ def test_parse():
 
 
 def test_assignment():
-  context = infixlang.Context()
+  context = C()
   parse(infixlang.expr, T('foo = 2 * 23')).eval(context)
-  assert context.slots['foo'] == 46
+  assert context['foo'] == 46
   parse(infixlang.expr, T('bar = foo + 2')).eval(context)
-  assert context.slots['foo'] == 46
-  assert context.slots['bar'] == 48
+  assert context['foo'] == 46
+  assert context['bar'] == 48
 
-  context = infixlang.Context()
+  context = C()
   tokens = T('a = 2* 23   b = a + 2 b')
   p, tokens = infixlang.expr.parse(tokens)
   p.eval(context)
@@ -101,12 +84,12 @@ def test_assignment():
   p.eval(context)
   p, tokens = infixlang.expr.parse(tokens)
   assert not tokens
-  v, _ = p.eval(context)
+  v = p.eval(context).val
   assert v == 48
-  assert context.slots['a'] == 46
-  assert context.slots['b'] == 48
+  assert context['a'] == 46
+  assert context['b'] == 48
 
-  context = infixlang.Context()
+  context = C()
   tokens = T('a_bbbb = 2*23   b_a = a_bbbb + 2 a_bbbb')
   p, tokens = infixlang.expr.parse(tokens)
   p.eval(context)
@@ -114,120 +97,113 @@ def test_assignment():
   p.eval(context)
   p, tokens = infixlang.expr.parse(tokens)
   assert not tokens
-  v, _ = p.eval(context)
+  v = p.eval(context).val
   assert v == 46
-  assert context.slots['a_bbbb'] == 46
-  assert context.slots['b_a'] == 48
+  assert context['a_bbbb'] == 46
+  assert context['b_a'] == 48
 
   print 'OK assignment'
 
 
 def test_expr_sequence():
-  context = infixlang.Context()
-  parse(infixlang.expr_sequence, T('foo = 2 * 23')).eval(context)
-  assert context.slots['foo'] == 46
+  context = parse(infixlang.expr_sequence, T('foo = 2 * 23')).eval(C())
+  assert context['foo'] == 46
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2')).eval(context)
-  assert v == 48
-  assert context.slots['a'] == 46
-  assert context.slots['b'] == 48
+  context = parse(infixlang.expr_sequence,
+            T('a = 2* 23,  b = a + 2')).eval(C())
+  assert context.val == 48
+  assert context['a'] == 46
+  assert context['b'] == 48
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence, T('a = 2* 23,  b = a + 2, b')).eval(context)
-  assert v == context.slots['b']
+  context = parse(infixlang.expr_sequence,
+            T('a = 2* 23,  b = a + 2, b')).eval(C())
+  assert context.val == context['b']
 
   print 'OK expr sequence'
 
 
 def test_contexts():
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence, 
-      T('a = 2* 3, c = [b = a + 2, 2*b]')).eval(context)
-  assert v == 16
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['c'] == 16
+  context = parse(infixlang.expr_sequence, 
+            T('a = 2* 3, c = [b = a + 2, 2*b]')).eval(C())
+  assert context.val == 16
+  assert context['a'] == 6
+  assert 'b' not in context
+  assert context['c'] == 16
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence,
-      T('a = 2* 3 c = [b = a + 2, 2*b]')).eval(context)
-  assert v == 16
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['c'] == 16
+  context = parse(infixlang.expr_sequence,
+            T('a = 2* 3 c = [b = a + 2, 2*b]')).eval(C())
+  assert context.val == 16
+  assert context['a'] == 6
+  assert 'b' not in context
+  assert context['c'] == 16
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence,
-        T('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')).eval(context)
-  assert v == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['d'] == 8
+  context = parse(infixlang.expr_sequence,
+            T('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')).eval(C())
+  assert context.val == 8
+  assert context['a'] == 6
+  assert 'b' not in context
+  assert context['d'] == 8
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence,
-       T('a = 2* 3  d = [aa=2  [b = aa + 2 2*b]]')).eval(context)
-  assert v == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert context.slots['d'] == 8
+  context = parse(infixlang.expr_sequence,
+            T('a = 2* 3  d = [aa=2  [b = aa + 2 2*b]]')).eval(C())
+  assert context.val == 8
+  assert context['a'] == 6
+  assert 'b' not in context
+  assert context['d'] == 8
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence, T('a = [2], b = [a]')).eval(context)
-  assert v == 2
-  assert context.slots['b'] == 2
+  context = parse(infixlang.expr_sequence,
+            T('a = [2], b = [a]')).eval(C())
+  assert context.val == 2
+  assert context['b'] == 2
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence, T('a ~ [3], b = [a]')).eval(context)
-  assert v == 3
-  assert context.slots['b'] == 3
+  context = parse(infixlang.expr_sequence,
+            T('a ~ [3], b = [a]')).eval(C())
+  assert context.val == 3
+  assert context['b'] == 3
 
-  context = infixlang.Context()
-  v, _ = parse(infixlang.expr_sequence, 
-        T('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]')).eval(context)
-  assert v == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert 'c' in context.slots
-  assert context.slots['d'] == 8
+  context = parse(infixlang.expr_sequence, 
+            T('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]')
+           ).eval(C())
+  assert context.val == 8
+  assert context['a'] == 6
+  assert 'b' not in context
+  assert 'c' in context
+  assert context['d'] == 8
 
-  context = infixlang.Context()
   tokens = T("""
       a = 2 * 3
       c ~ [b = aa + 2     2*b]
       d = [aa=2 c]""")
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
-  assert v == 8
-  assert context.slots['a'] == 6
-  assert 'b' not in context.slots
-  assert 'c' in context.slots
-  assert context.slots['d'] == 8
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 8
+  assert context['a'] == 6
+  assert 'b' not in context
+  assert 'c' in context
+  assert context['d'] == 8
 
   print 'OK contexts'
 
 
-def test_if():
-  context = infixlang.Context()
+def test_if_1():
   tokens = T("""
       else = 4
       then = 2
       if 0
       """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context) 
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 4
 
-  context = infixlang.Context()
+def test_if_2():
   tokens = T("""
       else ~ 2 * a
       then ~ 3 * a
       a = 2
       if 0
       """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 4
 
-  context = infixlang.Context()
+def test_if_3():
   tokens = T("""
       a = 1
       else ~ 2 * a
@@ -235,10 +211,10 @@ def test_if():
       a = 2
       if 1
       """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 6
 
-  context = infixlang.Context()
+def test_if_4():
   tokens = T("""
       a = 1
       else ~ [b = 2, b * a]
@@ -246,35 +222,59 @@ def test_if():
       a = 2
       if 1
       """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 6
 
-  context = infixlang.Context()
+def test_if_5():
   tokens = T("""
       a = 2
       else ~ 2*a  then ~ 3*a  if  a == 2
       """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 6
 
-  context = infixlang.Context()
+def test_if_6():
   tokens = T("""
     r ~ [then ~ a*2, else ~ a*3, if cond]
     l0 = [a=1, cond=0, r]
     l1 = [a=1, cond=1, r]
     """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
-  assert v == 2
-  assert context.slots['l0'] == 3
-  assert context.slots['l1'] == 2
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 2
+  assert context['l0'] == 3
+  assert context['l1'] == 2
 
-  context = infixlang.Context()
+
+def test_variable_context_1():
+  tokens = T("""
+    con = [a=1, b=2, this]
+    [c=3, con, a+c]
+    """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 4
+
+def test_variable_context_1():
+  tokens = T("""
+    con = [a=1, [b=2, this]]
+    [c=3, con, a+b+c]
+    """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 6
+
+
+def test_factorial():
   tokens = T("""
     factorial ~ [then ~ i*[i=i-1 factorial] else=1, if i]
     [i=4 factorial]
     """)
-  v, _ = parse(infixlang.expr_sequence, tokens).eval(context)
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 24
 
-  print 'OK if'
 
+def test_accumulate():
+  tokens = T("""
+    accumulate ~ [tally=tally+func, then~[i=i-1 accumulate], else~tally, if i]
+    [tally=0 i=4 func~i*i accumulate]
+    """)
+  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
+  assert v == 30

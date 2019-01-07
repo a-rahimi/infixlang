@@ -101,11 +101,11 @@ It kind of got out of hand.
   >>
   ```
 
-  A slightly more sophicicated one:
+  A slightly more sophisticated one:
 
   ```
   >> r ~ [then ~ a*2, else ~ a*3, if cond]
-  @[[ [[then ~ [a * 2]] , [[else ~ [a * 3]] , [if cond]]] ]]
+  ...
   >> [a=1, cond=1, r]
   2
   >> [a=1, cond=0, r]
@@ -120,6 +120,13 @@ It kind of got out of hand.
   ...
   >> [i=4 factorial]
   24
+  ```
+
+  Here's a function that accumulates i^2 up to some i:
+
+  ```
+    accumulate ~ [tally=tally+func, then~[i=i-1 accumulate], else~tally, if i]
+    [tally=0 i=4 func~i*i accumulate]
   ```
 
 # The Repl
