@@ -68,7 +68,7 @@ def test_parse():
   print 'OK parse'
 
 
-def test_assignment():
+def test_assignment_1():
   context = C()
   parse(infixlang.expr, T('foo = 2 * 23')).eval(context)
   assert context['foo'] == 46
@@ -76,6 +76,7 @@ def test_assignment():
   assert context['foo'] == 46
   assert context['bar'] == 48
 
+def test_assignment_2():
   context = C()
   tokens = T('a = 2* 23   b = a + 2 b')
   p, tokens = infixlang.expr.parse(tokens)
@@ -89,6 +90,7 @@ def test_assignment():
   assert context['a'] == 46
   assert context['b'] == 48
 
+def test_assignment_3():
   context = C()
   tokens = T('a_bbbb = 2*23   b_a = a_bbbb + 2 a_bbbb')
   p, tokens = infixlang.expr.parse(tokens)
@@ -102,27 +104,25 @@ def test_assignment():
   assert context['a_bbbb'] == 46
   assert context['b_a'] == 48
 
-  print 'OK assignment'
 
-
-def test_expr_sequence():
+def test_expr_sequence_1():
   context = parse(infixlang.expr_sequence, T('foo = 2 * 23')).eval(C())
   assert context['foo'] == 46
 
+def test_expr_sequence_2():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 23,  b = a + 2')).eval(C())
   assert context.val == 48
   assert context['a'] == 46
   assert context['b'] == 48
 
+def test_expr_sequence_3():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 23,  b = a + 2, b')).eval(C())
   assert context.val == context['b']
 
-  print 'OK expr sequence'
 
-
-def test_contexts():
+def test_contexts_1():
   context = parse(infixlang.expr_sequence, 
             T('a = 2* 3, c = [b = a + 2, 2*b]')).eval(C())
   assert context.val == 16
@@ -130,6 +130,7 @@ def test_contexts():
   assert 'b' not in context
   assert context['c'] == 16
 
+def test_contexts_2():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 3 c = [b = a + 2, 2*b]')).eval(C())
   assert context.val == 16
@@ -137,6 +138,7 @@ def test_contexts():
   assert 'b' not in context
   assert context['c'] == 16
 
+def test_contexts_3():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 3, d = [aa=2, [b = aa + 2, 2*b]]')).eval(C())
   assert context.val == 8
@@ -144,6 +146,7 @@ def test_contexts():
   assert 'b' not in context
   assert context['d'] == 8
 
+def test_contexts_4():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 3  d = [aa=2  [b = aa + 2 2*b]]')).eval(C())
   assert context.val == 8
@@ -151,16 +154,19 @@ def test_contexts():
   assert 'b' not in context
   assert context['d'] == 8
 
+def test_contexts_5():
   context = parse(infixlang.expr_sequence,
             T('a = [2], b = [a]')).eval(C())
   assert context.val == 2
   assert context['b'] == 2
 
+def test_contexts_6():
   context = parse(infixlang.expr_sequence,
             T('a ~ [3], b = [a]')).eval(C())
   assert context.val == 3
   assert context['b'] == 3
 
+def test_contexts_7():
   context = parse(infixlang.expr_sequence, 
             T('a = 2* 3, c ~ [b = aa + 2, 2*b], d = [aa=2, c]')
            ).eval(C())
@@ -170,6 +176,7 @@ def test_contexts():
   assert 'c' in context
   assert context['d'] == 8
 
+def test_contexts_8():
   tokens = T("""
       a = 2 * 3
       c ~ [b = aa + 2     2*b]
@@ -180,8 +187,6 @@ def test_contexts():
   assert 'b' not in context
   assert 'c' in context
   assert context['d'] == 8
-
-  print 'OK contexts'
 
 
 def test_if_1():
@@ -253,7 +258,7 @@ def test_variable_context_1():
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 4
 
-def test_variable_context_1():
+def test_variable_context_2():
   tokens = T("""
     con = [a=1, [b=2, this]]
     [c=3, con, a+b+c]
