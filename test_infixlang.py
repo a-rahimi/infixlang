@@ -28,7 +28,6 @@ def parse(production_rule_root, stream):
 
   return p
 
-
 def test_tokenize():
   def check(string):
     stringified = ''.join(str(tok) for tok in T(string))

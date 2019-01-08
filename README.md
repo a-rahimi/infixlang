@@ -130,7 +130,7 @@ a=1, b=2, and evaluates `func` in that context. The final line evaluates
 
 ## Grammar
 
-Under the hood, there's a very simple simple recursive descent context-free grammar parser.  What's nice
+Under the hood, there's a simple recursive descent context-free grammar parser.  What's nice
 about this particular parser is that it only takes 110 lines of code, and the production rules can
 themselves be written in Python. Here is a snippet from the code:
 
@@ -186,18 +186,23 @@ The link operator is treated slightly differently from other binary operators:
  value(c: e1 ~ e2) = value(c: value(c: e1) ~ e2)
 ```
 
-The value of the = and ~ opeators is a new context where the variable is endowed with
-a value:
+The value an assignment expression is a new context where the variable is endowed 
+with a value:
 ```
  value(value(c: varname = e): varname) = value(c: e)
- value(value(c: varname ~ e): varname) = value(c: e)
+```
+
+The value of a link expression is similar, except that the rhs is evaluated
+twice in the new context:
+```
+ value(value(c: varname ~ e): varname) = value(c: value(c: e))
 ```
 
 The "if" statements works like this:
 
 ```
- value(c: if e) = value(value(c if e): then) if value(c: e) 
-                                             else value(value(c: if e): else)
+ value(c: if e) = value(value(c: e): then)    if value(c: e) 
+                  value(value(c: e): else)    else
 ```
 
 There is a special variable named "this". It returns the context where "this" is being evaluated:

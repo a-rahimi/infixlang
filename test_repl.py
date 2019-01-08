@@ -47,15 +47,14 @@ def test_counting():
   istream = StringIO.StringIO(in_string)
   ostream = StringIO.StringIO()
   estream = StringIO.StringIO()
-
   repl.repl(istream, ostream, estream)
 
   assert estream.getvalue() == ''
 
   olines = ostream.getvalue().split('\n')
-  assert olines[7] == '1'
-  assert olines[73] == '3'
-  assert olines[74] == '3'
-  assert olines[232] == '4'
-
   #for i, ln in enumerate(olines): print i, ':', ln
+
+  assert olines[4] == '1'
+  assert olines[7] == '3'
+  assert olines[8] == '3'
+  assert olines[10] == '4'

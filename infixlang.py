@@ -47,30 +47,20 @@ class Context(object):
     self.parent = parent
     self.val = val
 
-  def deepcopy(self):
-    parent = self.parent.deepcopy() if self.parent else None
-    return self.__class__(parent=parent, val=self.val, slots=self.slots.copy())
-
   def dictify(self):
     slots = self.parent.dictify() if self.parent else {}
     slots.update(self.slots)
     return slots
 
-  def collapse(self):
-    return Context(parent=None, val=self.val, slots=self.dictify())
-
-  def set_ancestor(self, parent):
-    if self.parent:
-      self.parent.set_ancestor(parent)
-    else:
-      self.parent = parent
+  def collapse(self, parent=None):
+    return Context(parent=parent, val=self.val, slots=self.dictify())
 
   def __getitem__(self, name):
     if not isinstance(name, str):
       raise ValueError('"%s" is not a string' % name)
 
     if name == 'this':
-      return expr_reference(expr_this(self.deepcopy()))
+      return self.collapse()
 
     try:
       return self.slots[name]
@@ -79,16 +69,19 @@ class Context(object):
         # clean up the context hierarchy while looking up things.
         if not self.parent.slots:
           self.parent = self.parent.parent
-        return self.parent[name]
+        if self.parent:
+          return self.parent[name]
       raise UnknownVariableError(self, name)
 
   def __contains__(self, name):
     return name in self.slots or (
         name in self.parent if self.parent else False)
 
-  def stacktrace(self):
-    return '   ' + str(self) + '\n' + (
-        self.parent.stacktrace() if self.parent else '')
+  def stacktrace(self, max_depth=-1):
+    if not max_depth:
+      return ''
+    return '   ' + str(self) + (
+        '\n' + self.parent.stacktrace(max_depth=max_depth-1) if self.parent else '')
 
   def __str__(self):
     return 'Context(%s){%s}' %( 
@@ -123,16 +116,6 @@ class expr_reference(expr):
   def __repr__(self):
     return "@" + str(self.val)
 
-class expr_this(expr):
-  def __repr__(self):
-    return self.val.stacktrace()
-
-  def eval(self, context):
-    new_context = self.val.deepcopy()
-    new_context.set_ancestor(context)
-    new_context.val = expr_reference(self)
-    return new_context
-
 class expr_sequence(expr):
   def eval(self, context):
     return self.val[-1].eval(self.val[0].eval(context))
@@ -160,10 +143,9 @@ class expr_equality(expr):
       '==': lambda x,y: not int.__cmp__(x,y),
     }[self.val[1].val]
 
-    # in non-assignment contexts, both operators are evaluated a rhs
-    val = op(self.val[0].eval_rhs(context).val,
-              self.val[2].eval_rhs(context).val)
-    return Context(parent=context, val=val)
+    lhs = self.val[0].eval(context).val
+    rhs = self.val[2].eval(context).val
+    return Context(parent=context, val=op(lhs, rhs))
 
 class expr_plusminus(expr_equality):
   pass
@@ -173,15 +155,14 @@ class expr_muldiv(expr_equality):
 
 class parenthesized_expr(expr):
   def eval(self, context):
-    val = self.val[1].eval(Context(parent=context)).val
-    return Context(parent=context, val=val)
+    return self.val[1].eval(context)
 
 class expr_highest_precedence(expr):
   pass
 
 
 
-# ----- The terminal tokens
+# ----- The terminal tokens.
 
 class Value(parser.Terminal):
   def eval(self, context):
@@ -224,6 +205,8 @@ class variable(Value):
     v = context[self.val]
     if isinstance(v, expr_reference):
       return v.val.eval(context)
+    elif isinstance(v, Context):
+      return Context(parent=context, val=v, slots=v.slots)
     return Context(parent=context, val=v)
 
   def eval(self, context):
