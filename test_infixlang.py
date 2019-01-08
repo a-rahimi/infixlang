@@ -269,7 +269,7 @@ def test_variable_context_2():
 
 def test_factorial():
   tokens = T("""
-    factorial ~ (then ~ i*(i=i-1 factorial) else=1, if i)
+    factorial ~ (then ~ i*(i=i-1 factorial) else=1 if i)
     (i=4 factorial)
     """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
