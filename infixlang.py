@@ -42,16 +42,14 @@ class Context(object):
   parent.
   """
 
-  def __init__(self, parent=None, val=None):
-    self.slots = {}
+  def __init__(self, parent=None, val=None, slots={}):
+    self.slots = slots
     self.parent = parent
     self.val = val
 
   def deepcopy(self):
     parent = self.parent.deepcopy() if self.parent else None
-    new_context = self.__class__(parent=parent, val=self.val)
-    new_context.slots.update(self.slots)
-    return new_context
+    return self.__class__(parent=parent, val=self.val, slots=self.slots.copy())
 
   def dictify(self):
     slots = self.parent.dictify() if self.parent else {}
@@ -59,9 +57,7 @@ class Context(object):
     return slots
 
   def collapse(self):
-    c = Context(parent=None, val=self.val)
-    c.slots = self.dictify()
-    return c
+    return Context(parent=None, val=self.val, slots=self.dictify())
 
   def set_ancestor(self, parent):
     if self.parent:
@@ -86,10 +82,6 @@ class Context(object):
         return self.parent[name]
       raise UnknownVariableError(self, name)
 
-  def __setitem__(self, name, value):
-    self.slots[name] = value
-    return value
- 
   def __contains__(self, name):
     return name in self.slots or (
         name in self.parent if self.parent else False)
@@ -147,18 +139,16 @@ class expr_sequence(expr):
 
 class expr_assignment(expr):
   def eval(self, context):
-    lhs_context = self.val[0].eval_lhs(context)
+    varname = self.val[0].eval_lhs(context).val
     rhs_val = self.val[2].eval_rhs(context).val
-    context[lhs_context.val] = rhs_val
-    return Context(parent=context, val=rhs_val)
+    return Context(parent=context, val=rhs_val, slots={varname: rhs_val})
 
 class expr_link(expr):
   def eval(self, context):
     # in the context of a link, the rhs isn't evaluated at all.
-    lhs_context = self.val[0].eval_lhs(context)
+    varname = self.val[0].eval_lhs(context).val
     rhs_val = expr_reference(self.val[2])
-    context[lhs_context.val] = rhs_val
-    return lhs_context
+    return Context(parent=context, val=rhs_val, slots={varname: rhs_val})
 
 class expr_equality(expr):
   def eval(self, context):

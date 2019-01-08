@@ -69,38 +69,35 @@ def test_parse():
 
 
 def test_assignment_1():
-  context = C()
-  parse(infixlang.expr, T('foo = 2 * 23')).eval(context)
+  context = parse(infixlang.expr, T('foo = 2 * 23')).eval(C())
   assert context['foo'] == 46
-  parse(infixlang.expr, T('bar = foo + 2')).eval(context)
+  context = parse(infixlang.expr, T('bar = foo + 2')).eval(context)
   assert context['foo'] == 46
   assert context['bar'] == 48
 
 def test_assignment_2():
-  context = C()
   tokens = T('a = 2* 23   b = a + 2 b')
   p, tokens = infixlang.expr.parse(tokens)
-  p.eval(context)
+  context = p.eval(C())
   p, tokens = infixlang.expr.parse(tokens)
-  p.eval(context)
+  context = p.eval(context)
   p, tokens = infixlang.expr.parse(tokens)
   assert not tokens
-  v = p.eval(context).val
-  assert v == 48
+  context = p.eval(context)
+  assert context.val == 48
   assert context['a'] == 46
   assert context['b'] == 48
 
 def test_assignment_3():
-  context = C()
   tokens = T('a_bbbb = 2*23   b_a = a_bbbb + 2 a_bbbb')
   p, tokens = infixlang.expr.parse(tokens)
-  p.eval(context)
+  context = p.eval(C())
   p, tokens = infixlang.expr.parse(tokens)
-  p.eval(context)
+  context = p.eval(context)
   p, tokens = infixlang.expr.parse(tokens)
   assert not tokens
-  v = p.eval(context).val
-  assert v == 46
+  context = p.eval(context)
+  assert context.val == 46
   assert context['a_bbbb'] == 46
   assert context['b_a'] == 48
 
