@@ -66,11 +66,7 @@ class Context(object):
       return self.slots[name]
     except KeyError:
       if self.parent:
-        # clean up the context hierarchy while looking up things.
-        if not self.parent.slots:
-          self.parent = self.parent.parent
-        if self.parent:
-          return self.parent[name]
+        return self.parent[name]
       raise UnknownVariableError(self, name)
 
   def __contains__(self, name):

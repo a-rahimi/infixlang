@@ -279,3 +279,15 @@ def test_accumulate():
     """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 30
+
+def test_next_factorial():
+  tokens = T("""
+  factorial ~ (i=i+1, fac=i*fac, this)
+  factorial_state = (i=0, fac=1, factorial)
+  factorial_state = (factorial_state factorial) 
+  factorial_state = (factorial_state factorial) 
+  factorial_state = (factorial_state factorial) 
+  (factorial_state fac)
+  """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 24

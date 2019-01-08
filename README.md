@@ -125,7 +125,6 @@ parse tree of the expression `a+b`. The next line creates a context in which
 a=1, b=2, and evaluates `func` in that context. The final line evaluates
 `func` in the global context where a=23, b=2.
 
-
 # About the language & implementation
 
 ## Grammar
@@ -195,7 +194,7 @@ with a value:
 The value of a link expression is similar, except that the rhs is evaluated
 twice in the new context:
 ```
- value(value(c: varname ~ e): varname) = value(c: value(c: e))
+ value(value(c: varname ~ unparsed_expr): varname) = value(c: value(c: unparsed_expr))
 ```
 
 The "if" statements works like this:
