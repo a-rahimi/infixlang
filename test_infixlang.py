@@ -29,6 +29,7 @@ def parse(production_rule_root, stream):
   return p
 
 
+
 def test_tokenize():
   def check(string):
     stringified = ''.join(str(tok) for tok in T(string))
@@ -300,17 +301,19 @@ def test_next_factorial():
   assert context.val == 24
   assert 'i' not in context
   assert 'fac' not in context
-  
+
 def test_while():
   tokens = T("""
-  while ~ (then=iterator, else~while, cond=stop, if)
-  iterator ~ (stop=(i==8), i=i+1, sum=sum+i, this)
-  final = (i=0 sum=0 while)
-  end_i = (final i)
-  end_sum = (final sum)
+  iterate ~ (i=i+1, sum=sum+i, stop=(i==8), this)
+  iterator = (i=0 sum=0 iterate)
+
+  while ~ (then=iterator, else~(iterator=(iterator iterate) while), cond=(iterator stop) if)
+  final = while
+  final_i = (final i)
+  final_sum = (final sum)
+  final_stop = (final stop)
   """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
-  assert context['end_i'] == 8
-  assert context['end_sum'] == 8
-
-
+  assert context['final_i'] == 8
+  assert context['final_sum'] == 36
+  assert context['final_stop']

@@ -62,11 +62,10 @@ But it got out of hand and became a programming language.
 
 * Error reporting. There's some.
 
-* Conditional statements retrieve their conditin, "then", and "else" clauses from the context. The `if` operator
-  examines a variable in the context named `cond`.  If it's nonzero, then the statement evaluates and returns a
-  variable named `then`. If the condition is zero, a
-  variable named `else` is evaluated and returned instead. If there is no `else`
-  variable, `if` evaluates to `cond`. Here are some examples:
+* Conditional statements retrieve their condition, "then", and "else" clauses from the context. The `if` operator
+  examines a variable named `cond`.  If it's nonzero, then the statement evaluates and returns a
+  variable named `then`. If the condition is zero, a variable named `else` is evaluated and returned instead.
+  If there is no `else` variable, `if` evaluates to 0. Here are some examples:
 
   This evaluates to 4:
   ```
@@ -76,7 +75,7 @@ But it got out of hand and became a programming language.
   A slightly more sophisticated example:
 
   ```
-    r ~ (then=a*2 else=a*3 if cond)
+    r ~ (then=a*2 else=a*3 if)
     (a=1, cond=1, r)
   ```
 
@@ -118,12 +117,6 @@ There's an interactive environment. It works like this:
   25
   >>
 ```
-
-Here's what's happening in this session: Nothing surprising in the first
-three lines. The line `func ~ a+b` defines a variable `func` that points to the
-parse tree of the expression `a+b`. The next line creates a context in which
-a=1, b=2, and evaluates `func` in that context. The final line evaluates
-`func` in the global context where a=23, b=2.
 
 # About the language & implementation
 
