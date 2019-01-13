@@ -52,14 +52,6 @@ But it got out of hand and became a programming language.
       2
     ```
 
-  You get structs for free when you pass around contexts like this:
-  ```
-   >> mystruct = (a=1, b=2, c=3, this)
-   ...
-   >> (mystruct b)
-   2
-  ```
-
 * Error reporting. There's some.
 
 * Conditional statements retrieve their condition, "then", and "else" clauses from the context. The `if` operator
@@ -88,14 +80,6 @@ But it got out of hand and became a programming language.
     (i=4 factorial)
   ```
   This returns 24.
-
-  Here's a function that accumulates i<sup>2</sup> up to some i. It returns 30
-  for i=4:
-
-  ```
-    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, cond=i, if)
-    (tally=0 i=4 func~i*i accumulate)
-  ```
 
 # The Repl
 
@@ -209,3 +193,81 @@ inherit from the context.
 ```
 where chain(c1, c2) returns a new context where c1 is the parent of the root
 of c2. This hopefully explains the "mystruct" example above.
+
+
+# Some Advanced Maneuvers
+
+The language doesn't have functions, closures, loops, or data structures, but
+we can still build some typical language constructs with contexts and the "if" 
+statement.
+
+
+## Structs
+
+You get structs for free when you pass around contexts like this:
+
+  ```
+   >> mystruct = (a=1, b=2, c=3, this)
+   ...
+   >> (mystruct b)
+   2
+   >> mystruct b
+   2
+  ```
+
+The variable `mystruct` is just a context. The statement `(mystruct b)`
+evaluates the variable `b` in that context.
+
+## Iterators 
+
+Iterators are structs that update their state:
+
+```
+iterate ~ (i=i+1, this)
+iterator = (i=0 iterate)
+```
+
+You can query the state of an iterator: 
+```
+>> (iterator i)
+1
+>> (iterator i)
+1
+```
+
+And you can advance through states:
+```
+>> iterator = (iterator iterate)
+...
+>> (iterator i)
+2
+```
+
+## While Loops
+
+A while loop advances an iterator until the iterator is exhausted. For the
+purposes of a while loop, an iterator is exhausted when evaluating a variable
+named `stop` in the iterator's context evaluates to true:
+
+Here's how the while operator is defined:
+```
+while ~ (then=iterator, else~(iterator=(iterator iterate) while), cond=(iterator stop) if)
+```
+
+Here's an expression that sums numbers from 1 to 8:
+```
+iterate ~ (i=i+1, sum=sum+i, stop=(i==8), this)
+iterator=(i=0 sum=0 iterate)
+```
+
+Run the while loop to get the final iterator, then inspect the iterator:
+```
+>> iterator = while
+...
+>> iterator i
+8
+>> iterator stop
+True
+>> iterator sum
+36
+```
