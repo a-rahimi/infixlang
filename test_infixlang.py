@@ -305,10 +305,9 @@ def test_next_factorial():
 def test_while():
   tokens = T("""
   iterate ~ (i=i+1, sum=sum+i, stop=(i==8), this)
-  iterator = (i=0 sum=0 iterate)
 
   while ~ (then=iterator, else~(iterator=(iterator iterate) while), cond=(iterator stop) if)
-  final = while
+  final = (iterator=(i=0 sum=0 iterate) while)
   final_i = (final i)
   final_sum = (final sum)
   final_stop = (final stop)

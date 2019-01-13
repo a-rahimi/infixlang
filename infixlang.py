@@ -97,17 +97,6 @@ class expr(parser.Rule):
   def eval_rhs(self, context):
     return self.eval(context)
 
-class expr_if(expr):
-  def eval(self, context):
-    truth_context = variable('cond').eval(context)
-    if truth_context.val:
-      return variable('then').eval(truth_context)
-    else:
-      try:
-        return variable('else').eval(truth_context)
-      except UnknownVariableError:
-        return truth_context
-
 class expr_reference(expr):
   def __repr__(self):
     return "@" + str(self.val)
@@ -236,6 +225,17 @@ class close_paren(parser.LiteralToken):
 class op_if(parser.LiteralToken):
   tokens = {'if'}
 
+  def eval(self, context):
+    truth_context = variable('cond').eval(context)
+    if truth_context.val:
+      return variable('then').eval(truth_context)
+    else:
+      try:
+        return variable('else').eval(truth_context)
+      except UnknownVariableError:
+        return truth_context
+
+
 def tokenize(string):
   return parser.tokenize(string, [
     integer,
@@ -263,10 +263,8 @@ expr.rules = (
     expr_assignment,
     expr_link,
     expr_equality,
-    expr_if,
+    op_if,
     )
-
-expr_if.rules = ( [op_if],)
 
 expr_assignment.rules = (
     [variable, op_assignment, expr],

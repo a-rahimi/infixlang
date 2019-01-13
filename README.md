@@ -211,8 +211,6 @@ You get structs for free when you pass around contexts like this:
    ...
    >> (mystruct b)
    2
-   >> mystruct b
-   2
   ```
 
 The variable `mystruct` is just a context. The statement `(mystruct b)`
@@ -254,20 +252,20 @@ Here's how the while operator is defined:
 while ~ (then=iterator, else~(iterator=(iterator iterate) while), cond=(iterator stop) if)
 ```
 
-Here's an expression that sums numbers from 1 to 8:
+Here's an iterator that sums numbers from 1 to 8:
 ```
 iterate ~ (i=i+1, sum=sum+i, stop=(i==8), this)
-iterator=(i=0 sum=0 iterate)
+iterator = (i=0 sum=0 iterate)
 ```
 
 Run the while loop to get the final iterator, then inspect the iterator:
 ```
 >> iterator = while
 ...
->> iterator i
+>> (iterator i)
 8
->> iterator stop
+>> (iterator stop)
 True
->> iterator sum
+>> (iterator sum)
 36
 ```
