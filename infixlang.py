@@ -99,7 +99,7 @@ class expr(parser.Rule):
 
 class expr_if(expr):
   def eval(self, context):
-    truth_context = self.val[1].eval(context)
+    truth_context = variable('cond').eval(context)
     if truth_context.val:
       return variable('then').eval(truth_context)
     else:
@@ -119,8 +119,8 @@ class expr_sequence(expr):
 class expr_assignment(expr):
   def eval(self, context):
     varname = self.val[0].eval_lhs(context).val
-    rhs_val = self.val[2].eval_rhs(context).val
-    return Context(parent=context, val=rhs_val, slots={varname: rhs_val})
+    rhs = self.val[2].eval_rhs(context)
+    return Context(parent=rhs, val=rhs.val, slots={varname: rhs.val})
 
 class expr_link(expr):
   def eval(self, context):
@@ -266,9 +266,7 @@ expr.rules = (
     expr_if,
     )
 
-expr_if.rules = (
-    [op_if, expr],
-    )
+expr_if.rules = ( op_if,)
 
 expr_assignment.rules = (
     [variable, op_assignment, expr],

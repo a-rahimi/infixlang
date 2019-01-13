@@ -189,7 +189,8 @@ def test_if_1():
   tokens = T("""
       else = 4
       then = 2
-      if 0
+      cond = 0
+      if
       """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 4
@@ -199,7 +200,8 @@ def test_if_2():
       else ~ 2 * a
       then ~ 3 * a
       a = 2
-      if 0
+      cond = 0
+      if
       """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 4
@@ -210,7 +212,8 @@ def test_if_3():
       else ~ 2 * a
       then ~ 3 * a
       a = 2
-      if 1
+      cond = 1
+      if
       """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 6
@@ -221,7 +224,8 @@ def test_if_4():
       else ~ (b = 2, b * a)
       then ~ (b = 3, b * a)
       a = 2
-      if 1
+      cond=1
+      if
       """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 6
@@ -229,14 +233,16 @@ def test_if_4():
 def test_if_5():
   tokens = T("""
       a = 2
-      else ~ 2*a  then ~ 3*a  if  a == 2
+      else ~ 2*a  then ~ 3*a  
+      cond=(a == 2) 
+      if  
       """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
   assert v == 6
 
 def test_if_6():
   tokens = T("""
-    r ~ (then ~ a*2, else ~ a*3, if cond)
+    r ~ (then ~ a*2, else ~ a*3, if)
     l0 = (a=1, cond=0, r)
     l1 = (a=1, cond=1, r)
     """)
@@ -265,7 +271,7 @@ def test_variable_context_2():
 
 def test_factorial():
   tokens = T("""
-    factorial ~ (then ~ i*(i=i-1 factorial) else=1 if i)
+    factorial ~ (then ~ i*(i=i-1 factorial) else=1 cond=i if)
     (i=4 factorial)
     """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val
@@ -274,7 +280,7 @@ def test_factorial():
 
 def test_accumulate():
   tokens = T("""
-    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, if i)
+    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, cond=i, if)
     (tally=0 i=4 func~i*i accumulate)
     """)
   v = parse(infixlang.expr_sequence, tokens).eval(C()).val

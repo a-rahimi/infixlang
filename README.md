@@ -62,15 +62,15 @@ But it got out of hand and became a programming language.
 
 * Error reporting. There's some.
 
-* Conditional statements retrieve their "then" and "else" clauses from the context. The `if <condition>` operator
-  evaluates condition.  If it's nonzero, then the statement evaluates and returns a variable 
-  named `then`. If the condition is zero, a
+* Conditional statements retrieve their conditin, "then", and "else" clauses from the context. The `if` operator
+  examines a variable in the context named `cond`.  If it's nonzero, then the statement evaluates and returns a
+  variable named `then`. If the condition is zero, a
   variable named `else` is evaluated and returned instead. If there is no `else`
   variable, `if` evaluates to `cond`. Here are some examples:
 
   This evaluates to 4:
   ```
-    a=2, then=4 if a==2
+    a=2, then=4 cond=(a==2) if
   ```
 
   A slightly more sophisticated example:
@@ -85,7 +85,7 @@ But it got out of hand and became a programming language.
   Recursion is easy now:
 
   ```
-    factorial ~ (then~i*(i=i-1 factorial) else=1 if i)
+    factorial ~ (then~i*(i=i-1 factorial) else=1 cond=i if)
     (i=4 factorial)
   ```
   This returns 24.
@@ -94,7 +94,7 @@ But it got out of hand and became a programming language.
   for i=4:
 
   ```
-    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, if i)
+    accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, cond=i, if)
     (tally=0 i=4 func~i*i accumulate)
   ```
 
