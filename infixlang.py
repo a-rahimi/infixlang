@@ -120,7 +120,7 @@ class expr_assignment(expr):
   def eval(self, context):
     varname = self.val[0].eval_lhs(context).val
     rhs = self.val[2].eval_rhs(context)
-    return Context(parent=rhs, val=rhs.val, slots={varname: rhs.val})
+    return Context(parent=context, val=rhs.val, slots={varname: rhs.val})
 
 class expr_link(expr):
   def eval(self, context):
@@ -151,7 +151,7 @@ class expr_muldiv(expr_equality):
 
 class parenthesized_expr(expr):
   def eval(self, context):
-    return self.val[1].eval(context)
+    return Context(parent=context, val=self.val[1].eval(context).val)
 
 class expr_highest_precedence(expr):
   pass
@@ -266,7 +266,7 @@ expr.rules = (
     expr_if,
     )
 
-expr_if.rules = ( op_if,)
+expr_if.rules = ( [op_if],)
 
 expr_assignment.rules = (
     [variable, op_assignment, expr],
