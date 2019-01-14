@@ -46,7 +46,9 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
       print >>estream, e
       continue
 
-    global_context = global_context.collapse()
+    # collapse the global context to avoid chaining one context per command line
+    global_context = infixlang.Context(val=global_context.val,
+                                       slots=global_context.dictify())
 
     print >>ostream, global_context.val
 

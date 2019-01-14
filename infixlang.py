@@ -7,20 +7,13 @@ import parser
 #   compilation, or multiple backens. One day, I'll split these up.
 #
 #   I tried to make contexts (what scheme calls "environments", or what
-#   hardware calls a stackframe) first order objects. I'm imagining you could
-#   perform operations on them, like pass them around as objects, modify the
-#   current context in a called subroutine, concatenate them, etc. I don't
-#   know why you'd want to do this, but I wanted a way to experiment with this
-#   ability.
+#   hardware calls a stackframe) first order objects.
 #
 #   I tried to make the parse tree a first order object too. The ~ operator
 #   assigns the parse tree of the rhs to the lhs without evaluating the rhs.
 #   Wherever the lhs is later evaluated, the parse tree is evaluated in
-#   that context. I imagined this would be a nice way to decouple
-#   functions from their environments. When you combine this with contexts as
-#   first order objects, you get traditional closures for free. But hopefully
-#   you can do more interesting things too. To be experimented with...
-#
+#   that context. When you combine this with contexts as first order objects,
+#   you get traditional closures for free, among other things.
 
 class Error:
   pass
@@ -32,35 +25,22 @@ class UnknownVariableError(Error):
 
   def __repr__(self):
     return 'Unknown variable %s.\nStacktrace:\n%s' % (
-        self.varname,
-        self.context.stacktrace())
+        self.varname, self.context.stacktrace())
 
 class Context(object):
-  """Evaluation contexts attach values to variables.
-
-  If a name is not in the current context, it's looked up in the context's
-  parent.
-  """
-
   def __init__(self, parent=None, val=None, slots={}):
-    self.slots = slots
     self.parent = parent
     self.val = val
+    self.slots = slots
 
   def dictify(self):
     slots = self.parent.dictify() if self.parent else {}
     slots.update(self.slots)
     return slots
 
-  def collapse(self, parent=None):
-    return Context(parent=parent, val=self.val, slots=self.dictify())
-
   def __getitem__(self, name):
-    if not isinstance(name, str):
-      raise ValueError('"%s" is not a string' % name)
-
     if name == 'this':
-      return self.collapse()
+      return self
 
     try:
       return self.slots[name]
@@ -74,11 +54,9 @@ class Context(object):
         name in self.parent if self.parent else False)
 
   def stacktrace(self, current_depth=0, max_depth=-1):
-    if not max_depth:
-      return ''
     return '%d: ' % current_depth + str(self) + (
         '\n' + self.parent.stacktrace(current_depth+1, max_depth-1)
-        if self.parent else '')
+        if self.parent or not max_depth else '')
 
   def __str__(self):
     return 'Context(%s){%s}' %( 
@@ -264,10 +242,10 @@ expr_sequence.rules = (
     )
 
 expr.rules = (
+    op_if,
     expr_assignment,
     expr_link,
     expr_equality,
-    op_if,
     )
 
 expr_assignment.rules = (
@@ -290,7 +268,8 @@ expr_plusminus.rules = (
 
 expr_muldiv.rules = (
     [expr_highest_precedence, op_muldiv, expr_muldiv],
-    expr_highest_precedence)
+    expr_highest_precedence
+    )
 
 parenthesized_expr.rules = (
     [open_paren, expr_sequence, close_paren],
