@@ -195,7 +195,7 @@ where chain(c1, c2) returns a new context where c1 is the parent of the root
 of c2. This hopefully explains the "mystruct" example above.
 
 
-# Some Advanced Maneuvers
+# Language Maneuvers
 
 The language doesn't have functions, closures, loops, or data structures, but
 we can still build some typical language constructs with contexts and the "if" 
@@ -268,4 +268,56 @@ Run the while loop to get the final iterator, then inspect the iterator:
 True
 >> (iterator sum)
 36
+```
+
+## Lists
+
+We can build up linked lists by chaining contexts, and traversing that chain. Here's an example:
+```
+   insert ~ (prev=list, this)
+   mylist = (this)
+
+   mylist = (list=mylist value=2 insert)
+   mylist = (list=mylist value=3 insert)
+   mylist = (list=mylist value=7 insert)
+```
+`mylist` is a context with a variable named `value` and a varible named `prev`. 
+
+Here's how to peel back the elements of the list:
+```
+>> (mylist value)
+7
+>> ((mylist prev) value)
+3
+>> (((mylist prev) prev) value)
+2
+```
+
+## Associative Arrays
+
+Here's a more sophisticated version of the above that implements associative
+arrays:
+```
+  set_element ~ (prev=array, this)
+  get_element ~ (then=(array value)
+                 else~(array=(array prev) get_element)
+                 cond=((array slot) == i)
+                 if)
+
+  myarray = (this)
+  myarray = (array=myarray slot=1000 value=10 set_element)
+  myarray = (array=myarray slot=2000 value=20 set_element)
+  myarray = (array=myarray slot=3000 value=30 set_element)
+```
+The `get_element` function traverses the sequence of contexts embedded in the
+array for one that has a matching `slot` variable, and returns its `value`
+variable:
+
+```
+>> (array=myarray slot=1000 get_element)
+10
+>> (array=myarray slot=2000 get_element)
+20
+>> (array=myarray slot=3000 get_element)
+30
 ```

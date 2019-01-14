@@ -30,6 +30,25 @@ def parse(production_rule_root, stream):
 
 
 
+def test_lists():
+  tokens = T("""
+   insert ~ (prev=list, this)
+   mylist = (this)
+
+   mylist = (list=mylist value=2 insert)
+   mylist = (list=mylist value=3 insert)
+   mylist = (list=mylist value=7 insert)
+
+   item_1 = (mylist value)
+   item_2 = ((mylist prev) value)
+   item_3 = (((mylist prev) prev) value)
+  """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context['item_1'] == 7
+  assert context['item_2'] == 3
+  assert context['item_3'] == 2
+
+
 def test_tokenize():
   def check(string):
     stringified = ''.join(str(tok) for tok in T(string))
@@ -360,3 +379,23 @@ def test_while():
   assert context['final_i'] == 8
   assert context['final_sum'] == 36
   assert context['final_stop']
+
+def test_arrays():
+  tokens = T("""
+  set_element ~ (prev=array, this)
+  get_element ~ (then=(array value) else~(array=(array prev) get_element) cond=((array slot) == slot) if)
+
+  myarray = (this)
+  myarray = (array=myarray slot=1000 value=10 set_element)
+  myarray = (array=myarray slot=2000 value=20 set_element)
+  myarray = (array=myarray slot=3000 value=30 set_element)
+
+  item_1 = (array=myarray slot=1000 get_element)
+  item_2 = (array=myarray slot=2000 get_element)
+  item_3 = (array=myarray slot=3000 get_element)
+  """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context['item_1'] == 10
+  assert context['item_2'] == 20
+  assert context['item_3'] == 30
+

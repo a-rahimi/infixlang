@@ -73,11 +73,12 @@ class Context(object):
     return name in self.slots or (
         name in self.parent if self.parent else False)
 
-  def stacktrace(self, max_depth=-1):
+  def stacktrace(self, current_depth=0, max_depth=-1):
     if not max_depth:
       return ''
-    return '   ' + str(self) + (
-        '\n' + self.parent.stacktrace(max_depth=max_depth-1) if self.parent else '')
+    return '%d: ' % current_depth + str(self) + (
+        '\n' + self.parent.stacktrace(current_depth+1, max_depth-1)
+        if self.parent else '')
 
   def __str__(self):
     return 'Context(%s){%s}' %( 

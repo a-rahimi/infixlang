@@ -51,4 +51,12 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
     print >>ostream, global_context.val
 
 if __name__ == '__main__':
-  repl()
+  import pdb, traceback, sys
+
+  try:
+    repl()
+  except:
+    extype, value, tb = sys.exc_info()
+    traceback.print_exc()
+    pdb.post_mortem(tb)
+
