@@ -103,13 +103,18 @@ class expr_reference(expr):
 
 class expr_sequence(expr):
   def eval(self, context):
-    return self.val[-1].eval(self.val[0].eval(context))
+    c0 = self.val[0].eval(context)
+    return self.val[-1].eval(
+        Context(parent=c0, val=c0.val, slots=c0.val.dictify())
+        if isinstance(c0.val, Context) else c0)
 
 class expr_assignment(expr):
   def eval(self, context):
     varname = self.val[0].eval_lhs(context).val
     rhs = self.val[2].eval_rhs(context)
-    return Context(parent=context, val=rhs.val, slots={varname: rhs.val})
+    return Context(parent=context, 
+                   val=varname if isinstance(rhs.val, Context) else rhs.val,
+                   slots={varname: rhs.val})
 
 class expr_link(expr):
   def eval(self, context):
@@ -190,8 +195,6 @@ class variable(Value):
     v = context[self.val]
     if isinstance(v, expr_reference):
       return v.val.eval(context)
-    elif isinstance(v, Context):
-      return Context(parent=context, val=v, slots=v.slots)
     return Context(parent=context, val=v)
 
   def eval(self, context):

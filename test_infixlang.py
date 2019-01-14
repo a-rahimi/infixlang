@@ -142,6 +142,7 @@ def test_contexts_3():
   assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
+  assert 'aa' not in context
   assert context['d'] == 8
 
 def test_contexts_4():
@@ -150,6 +151,7 @@ def test_contexts_4():
   assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
+  assert 'aa' not in context
   assert context['d'] == 8
 
 def test_contexts_5():
@@ -171,6 +173,7 @@ def test_contexts_7():
   assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
+  assert 'aa' not in context
   assert 'c' in context
   assert context['d'] == 8
 
@@ -185,6 +188,17 @@ def test_contexts_8():
   assert 'b' not in context
   assert 'c' in context
   assert context['d'] == 8
+
+def test_context_9():
+  tokens = T("""
+    (a=1, b=2)
+    (c=3, a+c)
+    """)
+  try:
+    context = parse(infixlang.expr_sequence, tokens).eval(C())
+    assert False # this shouldn't succeed.
+  except infixlang.UnknownVariableError:
+    pass # it should raise.
 
 
 def test_if_1():
@@ -261,6 +275,10 @@ def test_variable_context_1():
     """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 4
+  assert 'a' not in context
+  assert 'b' not in context
+  assert 'c' not in context
+  assert 'con' in context
 
 def test_variable_context_2():
   tokens = T("""
@@ -269,6 +287,29 @@ def test_variable_context_2():
     """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
   assert context.val == 6
+  assert 'a' not in context
+  assert 'b' not in context
+  assert 'c' not in context
+  assert 'con' in context
+
+def test_context_valued_expressions():
+  tokens = T("""
+    contexts = (
+      con_a = (a=1, this),
+      con_b = (b=2, this),
+      this
+      )
+    v1 = (c=3, (contexts con_a), a+c)
+    v2 = (c=3, (contexts con_b), b+c)
+    """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context['v1'] == 4
+  assert context['v2'] == 5
+  assert 'a' not in context
+  assert 'b' not in context
+  assert 'c' not in context
+  assert 'con_a' not in context
+  assert 'con_b' not in context
 
 
 def test_factorial():
@@ -276,8 +317,9 @@ def test_factorial():
     factorial ~ (then ~ i*(i=i-1 factorial) else=1 cond=i if)
     (i=4 factorial)
     """)
-  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
-  assert v == 24
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 24
+  assert 'i' not in context
 
 
 def test_accumulate():
@@ -285,8 +327,10 @@ def test_accumulate():
     accumulate ~ (tally=tally+func, then~(i=i-1 accumulate), else~tally, cond=i, if)
     (tally=0 i=4 func~i*i accumulate)
     """)
-  v = parse(infixlang.expr_sequence, tokens).eval(C()).val
-  assert v == 30
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context.val == 30
+  assert 'i' not in context
+  assert 'tally' not in context
 
 def test_next_factorial():
   tokens = T("""
