@@ -147,25 +147,23 @@ class Value(parser.Terminal):
 class integer(Value):
   @classmethod
   def tokenize(cls, string):
-    ok = False
-    num = 0
+    num_str = ''
     while string and string[0].isdigit():
-      num = num * 10 + int(string[0])
+      num_str += string[0]
       string = string[1:]
-      ok = True
 
-    return (cls(num) if ok else None), string
+    return (cls(int(num_str)) if num_str else None), string
 
 
 class variable(Value):
   @classmethod
   def tokenize(cls, string):
-    w = ''
+    varname = ''
     while string and (string[0].isalnum() or string[0] == '_'):
-      w += string[0]
+      varname += string[0]
       string = string[1:]
 
-    return (cls(w) if w else None), string
+    return (cls(varname) if varname else None), string
 
   def eval_lhs(self, context):
     return Context(parent=context, val=self.val)
@@ -179,30 +177,14 @@ class variable(Value):
   def eval(self, context):
     return self.eval_rhs(context)
 
-
-class op_assignment(parser.LiteralToken):
-  tokens = {'='}
-
-class op_link(parser.LiteralToken):
-  tokens = {'~'}
-
-class op_plusminus(parser.LiteralToken):
-  tokens = {'-', '+'}
-
-class op_equality(parser.LiteralToken):
-  tokens = {'=='}
-
-class op_muldiv(parser.LiteralToken):
-  tokens = {'*', '/'}
-
-class comma(parser.LiteralToken):
-  tokens = {','}
-
-class open_paren(parser.LiteralToken):
-  tokens = {'('}
-
-class close_paren(parser.LiteralToken):
-  tokens = {')'}
+class op_assignment(parser.LiteralToken): tokens = {'='}
+class op_link(parser.LiteralToken): tokens = {'~'}
+class op_plusminus(parser.LiteralToken): tokens = {'-', '+'}
+class op_equality(parser.LiteralToken): tokens = {'=='}
+class op_muldiv(parser.LiteralToken): tokens = {'*', '/'}
+class comma(parser.LiteralToken): tokens = {','}
+class open_paren(parser.LiteralToken): tokens = {'('}
+class close_paren(parser.LiteralToken): tokens = {')'}
 
 class op_if(parser.LiteralToken):
   tokens = {'if'}
