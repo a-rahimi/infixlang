@@ -30,25 +30,6 @@ def parse(production_rule_root, stream):
 
 
 
-def test_lists():
-  tokens = T("""
-   insert ~ (prev=list, this)
-   mylist = (this)
-
-   mylist = (list=mylist value=2 insert)
-   mylist = (list=mylist value=3 insert)
-   mylist = (list=mylist value=7 insert)
-
-   item_1 = (mylist value)
-   item_2 = ((mylist prev) value)
-   item_3 = (((mylist prev) prev) value)
-  """)
-  context = parse(infixlang.expr_sequence, tokens).eval(C())
-  assert context['item_1'] == 7
-  assert context['item_2'] == 3
-  assert context['item_3'] == 2
-
-
 def test_tokenize():
   def check(string):
     stringified = ''.join(str(tok) for tok in T(string))
@@ -129,7 +110,6 @@ def test_expr_sequence_1():
 def test_expr_sequence_2():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 23,  b = a + 2')).eval(C())
-  assert context.val == 48
   assert context['a'] == 46
   assert context['b'] == 48
 
@@ -142,7 +122,6 @@ def test_expr_sequence_3():
 def test_contexts_1():
   context = parse(infixlang.expr_sequence, 
             T('a = 2* 3, c = (b = a + 2, 2*b)')).eval(C())
-  assert context.val == 16
   assert context['a'] == 6
   assert 'b' not in context
   assert context['c'] == 16
@@ -150,7 +129,6 @@ def test_contexts_1():
 def test_contexts_2():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 3 c = (b = a + 2, 2*b)')).eval(C())
-  assert context.val == 16
   assert context['a'] == 6
   assert 'b' not in context
   assert context['c'] == 16
@@ -158,7 +136,6 @@ def test_contexts_2():
 def test_contexts_3():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 3, d = (aa=2, (b = aa + 2, 2*b))')).eval(C())
-  assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
   assert 'aa' not in context
@@ -167,7 +144,6 @@ def test_contexts_3():
 def test_contexts_4():
   context = parse(infixlang.expr_sequence,
             T('a = 2* 3  d = (aa=2  (b = aa + 2 2*b))')).eval(C())
-  assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
   assert 'aa' not in context
@@ -176,20 +152,17 @@ def test_contexts_4():
 def test_contexts_5():
   context = parse(infixlang.expr_sequence,
             T('a = (2), b = (a)')).eval(C())
-  assert context.val == 2
   assert context['b'] == 2
 
 def test_contexts_6():
   context = parse(infixlang.expr_sequence,
             T('a ~ (3), b = (a)')).eval(C())
-  assert context.val == 3
   assert context['b'] == 3
 
 def test_contexts_7():
   context = parse(infixlang.expr_sequence, 
             T('a = 2* 3, c ~ (b = aa + 2, 2*b), d = (aa=2, c)')
            ).eval(C())
-  assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
   assert 'aa' not in context
@@ -202,7 +175,6 @@ def test_contexts_8():
       c ~ (b = aa + 2     2*b)
       d = (aa=2 c)""")
   context = parse(infixlang.expr_sequence, tokens).eval(C())
-  assert context.val == 8
   assert context['a'] == 6
   assert 'b' not in context
   assert 'c' in context
@@ -282,7 +254,6 @@ def test_if_6():
     l1 = (a=1, cond=1, r)
     """)
   context = parse(infixlang.expr_sequence, tokens).eval(C())
-  assert context.val == 2
   assert context['l0'] == 3
   assert context['l1'] == 2
 
@@ -380,6 +351,24 @@ def test_while():
   assert context['final_sum'] == 36
   assert context['final_stop']
 
+def test_lists():
+  tokens = T("""
+   insert ~ (prev=list, this)
+   mylist = (this)
+
+   mylist = (list=mylist value=2 insert)
+   mylist = (list=mylist value=3 insert)
+   mylist = (list=mylist value=7 insert)
+
+   item_1 = (mylist value)
+   item_2 = ((mylist prev) value)
+   item_3 = (((mylist prev) prev) value)
+  """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context['item_1'] == 7
+  assert context['item_2'] == 3
+  assert context['item_3'] == 2
+
 def test_arrays():
   tokens = T("""
   set_element ~ (prev=array, this)
@@ -398,4 +387,3 @@ def test_arrays():
   assert context['item_1'] == 10
   assert context['item_2'] == 20
   assert context['item_3'] == 30
-

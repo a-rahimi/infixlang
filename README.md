@@ -20,6 +20,7 @@ But it got out of hand and became a programming language.
   ```
     a = 2 * 3
     b = a + 2
+    b
   ```
 
   This evaluates to 8, as you'd expect.
@@ -45,7 +46,6 @@ But it got out of hand and became a programming language.
 
     ```
       >> con = (a=1, this)
-      ...
       >>> a
       Unknown variable a.
       >> (con a+1)
@@ -88,10 +88,9 @@ There's an interactive environment. It works like this:
 ```
   arahimi$ ./repl.py
   >> a= 23
-  23
   >> b = 2
-  2
   >> c = a+b
+  >> c
   25
   >> func ~ a+b
   @[a + b]
@@ -208,7 +207,6 @@ You get structs for free when you pass around contexts like this:
 
   ```
    >> mystruct = (a=1, b=2, c=3, this)
-   ...
    >> (mystruct b)
    2
   ```
@@ -236,7 +234,6 @@ You can query the state of an iterator:
 And you can advance through states:
 ```
 >> iterator = (iterator iterate)
-...
 >> (iterator i)
 2
 ```
@@ -261,7 +258,6 @@ iterator = (i=0 sum=0 iterate)
 Run the while loop to get the final iterator, then inspect the iterator:
 ```
 >> iterator = while
-...
 >> (iterator i)
 8
 >> (iterator stop)

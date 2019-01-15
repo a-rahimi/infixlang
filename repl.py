@@ -50,7 +50,8 @@ def repl(istream=None, ostream=sys.stdout, estream=sys.stderr):
     global_context = infixlang.Context(val=global_context.val,
                                        slots=global_context.dictify())
 
-    print >>ostream, global_context.val
+    if global_context.val is not None:
+      print >>ostream, global_context.val
 
 if __name__ == '__main__':
   import pdb, traceback, sys

@@ -15,8 +15,9 @@ def test_variables():
   in_string = """
     a = 23
     b = a * 2
+    b
   """
-  interaction(in_string, '23\n46\n', '')
+  interaction(in_string, '46\n', '')
 
 def test_error():
   in_string = """
@@ -28,7 +29,7 @@ def test_overflow_warning():
   in_string = """
     a = 2 *
   """
-  interaction(in_string, '2\n', 'Warning: stuff unparsed on the line: [*]\n')
+  interaction(in_string, '', 'Warning: stuff unparsed on the line: [*]\n')
 
 def test_counting():
   in_string = """
@@ -52,9 +53,9 @@ def test_counting():
   assert estream.getvalue() == ''
 
   olines = ostream.getvalue().split('\n')
-  #for i, ln in enumerate(olines): print i, ':', ln
+  for i, ln in enumerate(olines): print i, ':', ln
 
-  assert olines[4] == '1'
-  assert olines[7] == '3'
-  assert olines[8] == '3'
-  assert olines[10] == '4'
+  assert olines[1] == '1'
+  assert olines[2] == '3'
+  assert olines[3] == '3'
+  assert olines[4] == '4'

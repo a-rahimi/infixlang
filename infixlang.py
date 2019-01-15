@@ -91,9 +91,7 @@ class expr_assignment(expr):
   def eval(self, context):
     varname = self.val[0].eval_lhs(context).val
     rhs = self.val[2].eval_rhs(context)
-    return Context(parent=context, 
-                   val=varname if isinstance(rhs.val, Context) else rhs.val,
-                   slots={varname: rhs.val})
+    return Context(parent=context, val=None, slots={varname: rhs.val})
 
 class expr_link(expr):
   def eval(self, context):
