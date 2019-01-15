@@ -336,6 +336,23 @@ def test_next_factorial():
   assert 'i' not in context
   assert 'fac' not in context
 
+def test_iterator():
+  tokens = T("""
+  iterator = (i=0, iterate~(i=i+1, this), this)
+  v1 = (iterator i)
+  iterator = (iterator iterate)
+  v2 = (iterator i)
+  v3 = (iterator i)
+  iterator = (iterator iterate)
+  v4 = (iterator i)
+  """)
+  context = parse(infixlang.expr_sequence, tokens).eval(C())
+  assert context['v1'] == 0
+  assert context['v2'] == 1
+  assert context['v3'] == 1
+  assert context['v4'] == 2
+
+
 def test_while():
   tokens = T("""
   iterate ~ (i=i+1, sum=sum+i, stop=(i==8), this)

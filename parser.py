@@ -86,21 +86,21 @@ def eat_whitespace(string):
     string = string[1:]
   return string
 
-def tokenize(string, tokens):
-  stream = []
+def tokenize(string, acceptable_tokens):
+  parsed_tokens = []
   while string:
     string = eat_whitespace(string)
     if not string:
       break
 
-    for tok in tokens:
+    for tok in acceptable_tokens:
       token, string = tok.tokenize(string)
       if token:
-        stream.append(token)
+        parsed_tokens.append(token)
         break
 
     if not token:
       raise ParseError(message='Unrecognized:' + string,
-                       stream=stream)
+                       stream=parsed_tokens)
 
-  return stream
+  return parsed_tokens

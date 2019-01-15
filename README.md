@@ -25,11 +25,11 @@ But it got out of hand and became a programming language.
 
   This evaluates to 8, as you'd expect.
 
-* Support for closures and functions. Actually, there aren't any closures or functions. Instead, I decided to experiment with "contexts", a mix of a monad and an environment. They work like this:
+* Support for closures and functions. Actually, there aren't any closures or functions. Instead, I decided to experiment with "contexts", a mix of a monad and an environment to propagate static single assignment expressions. They work like this:
 
     ```
-      c ~ (b = a + 2,  2*b)
-      d = (a=2 c)
+      c ~ (b=a+2,  2*b)
+      d = (a=2, c)
     ```
 
     The ~ notation assigns the parse tree of the rhs to the lhs. The rhs gets parsed, but not evaluated. Then wherever the lhs appears, the parse tree is evaluated in that context. Scoping is dynamic.
@@ -39,14 +39,15 @@ But it got out of hand and became a programming language.
 * You don't need delimeters between statements. The grammar is simple enough (or maybe the parser is smart enough) that you don't need to separate expressions with , or ;.  If you want to do so for clarity, you can. The above snippet can be written like this:
 
     ```
-      c ~ (b=a+2  2*b),  d = (a=2  c)
+      c ~ (b= a + 2  2 * b),  d = (a=2  c)
     ```
+    Though you probably wouldn't because it's much less readable.
 
 * The special variable "this" returns the current context. When you evaluate a context-valued variable inside another context, the former updates the bindings in the latter. For example:
 
     ```
       >> con = (a=1, this)
-      >>> a
+      >> a
       Unknown variable a.
       >> (con a+1)
       2
@@ -87,7 +88,7 @@ There's an interactive environment. It works like this:
 
 ```
   arahimi$ ./repl.py
-  >> a= 23
+  >> a = 23
   >> b = 2
   >> c = a+b
   >> c
@@ -216,14 +217,20 @@ evaluates the variable `b` in that context.
 
 ## Iterators 
 
-Iterators are structs that update their state:
-
+Iterators are structs endowed with a helper function that that returns an
+updated sturct (keep in mind that we don't have functions or structs in this
+language. I'm just using these terms to describe my own mental model of the 
+next two lines):
 ```
 iterate ~ (i=i+1, this)
 iterator = (i=0 iterate)
 ```
+Or better, we can encapsulate `iterate` inside `iterator` like so:
+```
+iterator = (i=0, iterate~(i=i+1, this), this)
+```
 
-You can query the state of an iterator: 
+You can query the state of an iterator as you would any other struct:
 ```
 >> (iterator i)
 1
@@ -240,9 +247,9 @@ And you can advance through states:
 
 ## While Loops
 
-A while loop advances an iterator until the iterator is exhausted. For the
-purposes of a while loop, an iterator is exhausted when evaluating a variable
-named `stop` in the iterator's context evaluates to true:
+A while loop advances an iterator to exhaustion. For the
+purposes of a while loop, an iterator is exhausted when a variable
+named `stop` evaluates to true in the iterator's context:
 
 Here's how the while operator is defined:
 ```
@@ -271,8 +278,8 @@ True
 We can build up linked lists by chaining contexts, and traversing that chain. Here's an example:
 ```
    insert ~ (prev=list, this)
-   mylist = (this)
 
+   mylist = (this)
    mylist = (list=mylist value=2 insert)
    mylist = (list=mylist value=3 insert)
    mylist = (list=mylist value=7 insert)
