@@ -9,8 +9,7 @@ this one:
 
 (the answer is 12).
 
-But it got out of hand and became a programming language.
-
+But it got out of hand.
 
 # Features
 
