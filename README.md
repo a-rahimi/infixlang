@@ -55,9 +55,7 @@ But it got out of hand.
 * Error reporting. There's some.
 
 * Conditional statements retrieve their condition, "then", and "else" clauses from the context. The `if` operator
-  examines a variable named `cond`.  If it's nonzero, then the statement evaluates and returns a
-  variable named `then`. If the condition is zero, a variable named `else` is evaluated and returned instead.
-  If there is no `else` variable, `if` evaluates to 0. Here are some examples:
+  examines a variable named `cond`.  If it's nonzero, a variable named `then` is evaluated and return. If the condition is zero, a variable named `else` is evaluated and returned instead. If there is no `else` variable, `if` evaluates to 0. Here are some examples:
 
   This evaluates to 4:
   ```
@@ -105,9 +103,7 @@ There's an interactive environment. It works like this:
 
 ## Grammar
 
-Under the hood, there's a simple recursive descent context-free grammar parser.  What's nice
-about this particular parser is that it only takes 110 lines of code, and the production rules can
-themselves be written in Python. Here is a snippet from the code:
+Under the hood, there's a simple recursive descent context-free grammar parser. Here is a snippet of the grammar from the code:
 
   ```python
   expr.rules = (
@@ -197,7 +193,7 @@ of c2. This hopefully explains the "mystruct" example above.
 # Language Maneuvers
 
 The language doesn't have functions, closures, loops, or data structures, but
-we can still build some typical language constructs with contexts and the "if" 
+we can still build the familiar language constructs with contexts and the "if" 
 statement.
 
 
@@ -218,7 +214,7 @@ evaluates the variable `b` in that context.
 
 Iterators are structs endowed with a helper function that that returns an
 updated sturct (keep in mind that we don't have functions or structs in this
-language. I'm just using these terms to describe my own mental model of the 
+language. I'm just using these terms to describe my mental model of the 
 next two lines):
 ```
 iterate ~ (i=i+1, this)
